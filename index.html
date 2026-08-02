@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyStreak — Daily Win Tracker</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --text: #1a1d27;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --win: #16a34a;
+    --win-soft: #dcfce7;
+    --lose: #dc2626;
+    --lose-soft: #fee2e2;
+    --accent: #f59e0b;
+    --accent-soft: #fef3c7;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141c;
+      --card: #1c1f2b;
+      --text: #eceef4;
+      --muted: #9aa1b1;
+      --border: #2c3040;
+      --win-soft: #123822;
+      --lose-soft: #3a1618;
+      --accent-soft: #3a2c0c;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 1.25rem; }
+
+  header { text-align: center; }
+  header h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
+  header p { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+
+  .streak-card { text-align: center; }
+  .streak-flame { font-size: 3rem; line-height: 1; }
+  .streak-count { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.03em; margin-top: .25rem; }
+  .streak-label { color: var(--muted); font-size: .95rem; margin-top: .25rem; }
+
+  .week-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .75rem; }
+  .week { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
+  .day {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .6rem .25rem;
+    text-align: center;
+    font-size: .8rem;
+  }
+  .day .name { color: var(--muted); font-size: .7rem; font-weight: 600; text-transform: uppercase; }
+  .day .mark { font-size: 1.3rem; margin-top: .25rem; line-height: 1.4; }
+  .day.win  { background: var(--win-soft); border-color: var(--win); }
+  .day.lose { background: var(--lose-soft); border-color: var(--lose); }
+  .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .actions { display: flex; gap: .75rem; margin-top: 1rem; }
+  .actions button {
+    flex: 1;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: .85rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    transition: transform .08s ease, opacity .15s ease;
+  }
+  .actions button:active { transform: scale(.97); }
+  .actions button:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-win  { background: var(--win); }
+  .btn-lose { background: var(--lose); }
+  .status-msg { text-align: center; color: var(--muted); font-size: .85rem; margin-top: .75rem; min-height: 1.2em; }
+
+  .badges-empty { color: var(--muted); font-size: .9rem; }
+  .badge-list { display: flex; flex-direction: column; gap: .5rem; }
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: .6rem .9rem;
+  }
+  .badge .icon { font-size: 1.6rem; }
+  .badge .info b { display: block; font-size: .95rem; }
+  .badge .info span { color: var(--muted); font-size: .8rem; }
+
+  .celebrate {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.45);
+    z-index: 10;
+  }
+  .celebrate.show { display: flex; }
+  .celebrate .box {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 2rem 2.5rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+    animation: pop .3s ease;
+  }
+  .celebrate .box .big { font-size: 4rem; }
+  .celebrate .box h2 { margin-top: .5rem; }
+  .celebrate .box p { color: var(--muted); margin-top: .25rem; }
+  .celebrate .box button {
+    margin-top: 1.25rem;
+    padding: .6rem 1.5rem;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  @keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  footer { text-align: center; }
+  footer button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: .75rem;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🔥 MyStreak</h1>
+    <p>Win every weekday. Five wins Mon–Fri earn a badge.</p>
+  </header>
+
+  <div class="card streak-card">
+    <div class="streak-flame" id="flame">🔥</div>
+    <div class="streak-count" id="streakCount">0</div>
+    <div class="streak-label" id="streakLabel">day streak</div>
+  </div>
+
+  <div class="card">
+    <div class="week-title" id="weekTitle">This week</div>
+    <div class="week" id="week"></div>
+    <div class="actions">
+      <button class="btn-win" id="btnWin">✅ Win</button>
+      <button class="btn-lose" id="btnLose">❌ Lose</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <div class="card">
+    <div class="week-title">🏆 Badges</div>
+    <div id="badges"></div>
+  </div>
+
+  <footer>
+    <button id="resetAll">Reset all data</button>
+  </footer>
+</div>
+
+<div class="celebrate" id="celebrate">
+  <div class="box">
+    <div class="big">🏅</div>
+    <h2>Perfect Week!</h2>
+    <p>Five wins, Monday to Friday. Badge earned!</p>
+    <button id="celebrateClose">Nice!</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var STORE_KEY = "mystreak-data-v1";
+  var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  var MS_DAY = 86400000;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      var data = raw ? JSON.parse(raw) : {};
+      if (!data.days || typeof data.days !== "object") data.days = {};
+      return data;
+    } catch (e) {
+      return { days: {} };
+    }
+  }
+  function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+  function dateKey(d) {
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+  function keyToDate(key) {
+    var p = key.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function isWeekday(d) { var w = d.getDay(); return w >= 1 && w <= 5; }
+
+  // Monday of the week containing d
+  function mondayOf(d) {
+    var m = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var shift = (m.getDay() + 6) % 7; // Mon=0 ... Sun=6
+    m.setDate(m.getDate() - shift);
+    return m;
+  }
+
+  // Streak = consecutive weekday wins ending at the most recent recorded
+  // weekday. A "lose" or a skipped weekday breaks the chain. Weekends are
+  // ignored entirely.
+  function computeStreak(data, today) {
+    var streak = 0;
+    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    // If today has no entry yet, start counting from the previous weekday.
+    if (!data.days[dateKey(d)]) d = new Date(d.getTime() - MS_DAY);
+    while (true) {
+      if (isWeekday(d)) {
+        var v = data.days[dateKey(d)];
+        if (v === "win") streak++;
+        else break; // lose or missing weekday ends the chain
+      }
+      d = new Date(d.getTime() - MS_DAY);
+      if (d.getFullYear() < 2000) break; // safety bound
+    }
+    return streak;
+  }
+
+  // A badge for every week whose Mon–Fri are all wins.
+  function computeBadges(data) {
+    var weeks = {};
+    Object.keys(data.days).forEach(function (key) {
+      if (data.days[key] !== "win") return;
+      var d = keyToDate(key);
+      if (!isWeekday(d)) return;
+      var mon = mondayOf(d);
+      var wk = dateKey(mon);
+      weeks[wk] = (weeks[wk] || 0) + 1;
+    });
+    return Object.keys(weeks)
+      .filter(function (wk) { return weeks[wk] === 5; })
+      .sort()
+      .reverse();
+  }
+
+  function fmt(d) {
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  var data = load();
+
+  function render() {
+    var today = new Date();
+    var todayKey = dateKey(today);
+    var streak = computeStreak(data, today);
+    var badges = computeBadges(data);
+
+    document.getElementById("streakCount").textContent = streak;
+    document.getElementById("streakLabel").textContent =
+      streak === 1 ? "day streak" : "day streak";
+    document.getElementById("flame").textContent =
+      streak >= 20 ? "🌋" : streak >= 10 ? "🔥🔥" : streak >= 1 ? "🔥" : "💤";
+
+    // Week view
+    var mon = mondayOf(today);
+    var fri = new Date(mon.getTime() + 4 * MS_DAY);
+    document.getElementById("weekTitle").textContent =
+      "This week · " + fmt(mon) + " – " + fmt(fri);
+
+    var weekEl = document.getElementById("week");
+    weekEl.innerHTML = "";
+    for (var i = 0; i < 5; i++) {
+      var d = new Date(mon.getTime() + i * MS_DAY);
+      var key = dateKey(d);
+      var v = data.days[key];
+      var cell = document.createElement("div");
+      cell.className = "day" + (v ? " " + v : "") + (key === todayKey ? " today" : "");
+      cell.innerHTML =
+        '<div class="name">' + DAY_NAMES[i] + "</div>" +
+        '<div class="mark">' + (v === "win" ? "✅" : v === "lose" ? "❌" : "·") + "</div>";
+      weekEl.appendChild(cell);
+    }
+
+    // Buttons + status
+    var btnWin = document.getElementById("btnWin");
+    var btnLose = document.getElementById("btnLose");
+    var msg = document.getElementById("statusMsg");
+    if (!isWeekday(today)) {
+      btnWin.disabled = true;
+      btnLose.disabled = true;
+      msg.textContent = "It's the weekend — your streak is safe. See you Monday!";
+    } else if (data.days[todayKey]) {
+      btnWin.disabled = false;
+      btnLose.disabled = false;
+      msg.textContent = "Today is marked as a " +
+        (data.days[todayKey] === "win" ? "win ✅" : "loss ❌") +
+        " — tap the other button to change it.";
+    } else {
+      btnWin.disabled = false;
+      btnLose.disabled = false;
+      msg.textContent = "How did today go?";
+    }
+
+    // Badges
+    var badgesEl = document.getElementById("badges");
+    if (badges.length === 0) {
+      badgesEl.innerHTML = '<div class="badges-empty">No badges yet. Win Monday through Friday to earn your first one!</div>';
+    } else {
+      var list = document.createElement("div");
+      list.className = "badge-list";
+      badges.forEach(function (wk) {
+        var m = keyToDate(wk);
+        var f = new Date(m.getTime() + 4 * MS_DAY);
+        var el = document.createElement("div");
+        el.className = "badge";
+        el.innerHTML =
+          '<div class="icon">🏅</div>' +
+          '<div class="info"><b>Perfect Week</b><span>' + fmt(m) + " – " + fmt(f) + "</span></div>";
+        list.appendChild(el);
+      });
+      badgesEl.innerHTML = "";
+      badgesEl.appendChild(list);
+    }
+  }
+
+  function mark(result) {
+    var today = new Date();
+    if (!isWeekday(today)) return;
+    var badgesBefore = computeBadges(data).length;
+    data.days[dateKey(today)] = result;
+    save(data);
+    var badgesAfter = computeBadges(data).length;
+    render();
+    if (result === "win" && badgesAfter > badgesBefore) {
+      document.getElementById("celebrate").classList.add("show");
+    }
+  }
+
+  document.getElementById("btnWin").addEventListener("click", function () { mark("win"); });
+  document.getElementById("btnLose").addEventListener("click", function () { mark("lose"); });
+  document.getElementById("celebrateClose").addEventListener("click", function () {
+    document.getElementById("celebrate").classList.remove("show");
+  });
+  document.getElementById("resetAll").addEventListener("click", function () {
+    if (confirm("Delete all streak data? This cannot be undone.")) {
+      data = { days: {} };
+      save(data);
+      render();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
