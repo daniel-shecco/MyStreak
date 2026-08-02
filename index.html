@@ -61,6 +61,44 @@
   .streak-count { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.03em; margin-top: .25rem; }
   .streak-label { color: var(--muted); font-size: .95rem; margin-top: .25rem; }
 
+  .progress-wrap { margin-top: 1.25rem; text-align: left; }
+  .progress-ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: .3rem;
+  }
+  .progress-track {
+    height: 10px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), #f97316);
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .progress-text { text-align: center; color: var(--muted); font-size: .8rem; margin-top: .4rem; }
+  .milestones { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin-top: .75rem; }
+  .milestone-chip {
+    font-size: .75rem;
+    font-weight: 700;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .milestone-chip.done {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
   .week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
   .week-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .week-nav {
@@ -180,6 +218,17 @@
     <div class="streak-flame" id="flame">🔥</div>
     <div class="streak-count" id="streakCount">0</div>
     <div class="streak-label" id="streakLabel">day streak</div>
+    <div class="progress-wrap">
+      <div class="progress-ends">
+        <span id="progressFrom">0</span>
+        <span id="progressTo">10</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText"></div>
+      <div class="milestones" id="milestones"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -221,6 +270,7 @@
   var STORE_KEY = "mystreak-data-v1";
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
   var MS_DAY = 86400000;
+  var MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
 
   function load() {
     try {
@@ -302,6 +352,36 @@
       streak === 1 ? "day streak" : "day streak";
     document.getElementById("flame").textContent =
       streak >= 20 ? "🌋" : streak >= 10 ? "🔥🔥" : streak >= 1 ? "🔥" : "💤";
+
+    // Milestone progression bar
+    var next = null, prev = 0;
+    for (var m = 0; m < MILESTONES.length; m++) {
+      if (streak < MILESTONES[m]) { next = MILESTONES[m]; break; }
+      prev = MILESTONES[m];
+    }
+    var fillEl = document.getElementById("progressFill");
+    var textEl = document.getElementById("progressText");
+    if (next === null) {
+      document.getElementById("progressFrom").textContent = prev;
+      document.getElementById("progressTo").textContent = "🏆";
+      fillEl.style.width = "100%";
+      textEl.textContent = "All milestones crushed — " + streak + " days!";
+    } else {
+      document.getElementById("progressFrom").textContent = prev;
+      document.getElementById("progressTo").textContent = next;
+      var pct = ((streak - prev) / (next - prev)) * 100;
+      fillEl.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      var left = next - streak;
+      textEl.textContent = left + (left === 1 ? " day" : " days") + " to " + next;
+    }
+    var msEl = document.getElementById("milestones");
+    msEl.innerHTML = "";
+    MILESTONES.forEach(function (ms) {
+      var chip = document.createElement("span");
+      chip.className = "milestone-chip" + (streak >= ms ? " done" : "");
+      chip.textContent = (streak >= ms ? "⭐ " : "") + ms;
+      msEl.appendChild(chip);
+    });
 
     // Week view (weekOffset weeks back from the current week)
     var curMon = mondayOf(today);

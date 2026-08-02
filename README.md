@@ -14,6 +14,9 @@ backend, no account, no build step.
 - **Forgot to log a day?** Tap any past day tile to cycle it through
   unset → ✅ win → ❌ lose → unset, and use the ‹ › arrows to reach
   earlier weeks.
+- A **progression bar** under the streak counter tracks your climb toward
+  the next milestone (10, 25, 50, 100, 250, 500, 1000 days), with ⭐ chips
+  for every milestone you've already reached.
 
 All data is stored in your browser's `localStorage`, so your streak lives on
 the device/browser you use to track it.
