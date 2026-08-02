@@ -11,6 +11,9 @@ backend, no account, no build step.
 - Missed days and weekends don't count and don't break your streak.
 - Win all five days, Monday through Friday, and you earn a **🏅 Perfect Week
   badge** — badges are collected forever on the page.
+- **Forgot to log a day?** Tap any past day tile to cycle it through
+  unset → ✅ win → ❌ lose → unset, and use the ‹ › arrows to reach
+  earlier weeks.
 
 All data is stored in your browser's `localStorage`, so your streak lives on
 the device/browser you use to track it.

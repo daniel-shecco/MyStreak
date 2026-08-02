@@ -61,7 +61,20 @@
   .streak-count { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.03em; margin-top: .25rem; }
   .streak-label { color: var(--muted); font-size: .95rem; margin-top: .25rem; }
 
-  .week-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .75rem; }
+  .week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+  .week-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .week-nav {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    width: 1.8rem;
+    height: 1.8rem;
+    cursor: pointer;
+    font-size: .9rem;
+    line-height: 1;
+  }
+  .week-nav:disabled { opacity: .35; cursor: not-allowed; }
   .week { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
   .day {
     border: 1px solid var(--border);
@@ -75,6 +88,9 @@
   .day.win  { background: var(--win-soft); border-color: var(--win); }
   .day.lose { background: var(--lose-soft); border-color: var(--lose); }
   .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .day.clickable { cursor: pointer; }
+  .day.clickable:hover { border-color: var(--accent); }
+  .backfill-hint { color: var(--muted); font-size: .75rem; text-align: center; margin-top: .6rem; }
 
   .actions { display: flex; gap: .75rem; margin-top: 1rem; }
   .actions button {
@@ -167,8 +183,13 @@
   </div>
 
   <div class="card">
-    <div class="week-title" id="weekTitle">This week</div>
+    <div class="week-header">
+      <button class="week-nav" id="prevWeek" title="Previous week">‹</button>
+      <div class="week-title" id="weekTitle">This week</div>
+      <button class="week-nav" id="nextWeek" title="Next week">›</button>
+    </div>
     <div class="week" id="week"></div>
+    <div class="backfill-hint">Forgot a day? Tap a past day to cycle it: · → ✅ → ❌ → ·</div>
     <div class="actions">
       <button class="btn-win" id="btnWin">✅ Win</button>
       <button class="btn-lose" id="btnLose">❌ Lose</button>
@@ -268,6 +289,7 @@
   }
 
   var data = load();
+  var weekOffset = 0; // 0 = current week, -1 = last week, ...
 
   function render() {
     var today = new Date();
@@ -281,23 +303,32 @@
     document.getElementById("flame").textContent =
       streak >= 20 ? "🌋" : streak >= 10 ? "🔥🔥" : streak >= 1 ? "🔥" : "💤";
 
-    // Week view
-    var mon = mondayOf(today);
-    var fri = new Date(mon.getTime() + 4 * MS_DAY);
+    // Week view (weekOffset weeks back from the current week)
+    var curMon = mondayOf(today);
+    var mon = new Date(curMon.getFullYear(), curMon.getMonth(), curMon.getDate() + weekOffset * 7);
+    var fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
     document.getElementById("weekTitle").textContent =
-      "This week · " + fmt(mon) + " – " + fmt(fri);
+      (weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : "Week of " + fmt(mon)) +
+      " · " + fmt(mon) + " – " + fmt(fri);
+    document.getElementById("nextWeek").disabled = weekOffset === 0;
 
     var weekEl = document.getElementById("week");
     weekEl.innerHTML = "";
     for (var i = 0; i < 5; i++) {
-      var d = new Date(mon.getTime() + i * MS_DAY);
+      var d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i);
       var key = dateKey(d);
       var v = data.days[key];
+      var isPastOrToday = key <= todayKey;
       var cell = document.createElement("div");
-      cell.className = "day" + (v ? " " + v : "") + (key === todayKey ? " today" : "");
+      cell.className = "day" + (v ? " " + v : "") +
+        (key === todayKey ? " today" : "") +
+        (isPastOrToday ? " clickable" : "");
       cell.innerHTML =
         '<div class="name">' + DAY_NAMES[i] + "</div>" +
         '<div class="mark">' + (v === "win" ? "✅" : v === "lose" ? "❌" : "·") + "</div>";
+      if (isPastOrToday) {
+        cell.addEventListener("click", cycleDay.bind(null, key));
+      }
       weekEl.appendChild(cell);
     }
 
@@ -343,19 +374,39 @@
     }
   }
 
-  function mark(result) {
-    var today = new Date();
-    if (!isWeekday(today)) return;
+  function setDay(key, result) {
     var badgesBefore = computeBadges(data).length;
-    data.days[dateKey(today)] = result;
+    if (result) data.days[key] = result;
+    else delete data.days[key];
     save(data);
     var badgesAfter = computeBadges(data).length;
     render();
-    if (result === "win" && badgesAfter > badgesBefore) {
+    if (badgesAfter > badgesBefore) {
       document.getElementById("celebrate").classList.add("show");
     }
   }
 
+  function mark(result) {
+    var today = new Date();
+    if (!isWeekday(today)) return;
+    setDay(dateKey(today), result);
+  }
+
+  // Backfill: tapping a past (or today's) weekday tile cycles it
+  // through unset -> win -> lose -> unset.
+  function cycleDay(key) {
+    var v = data.days[key];
+    setDay(key, v === "win" ? "lose" : v === "lose" ? null : "win");
+  }
+
+  document.getElementById("prevWeek").addEventListener("click", function () {
+    weekOffset--;
+    render();
+  });
+  document.getElementById("nextWeek").addEventListener("click", function () {
+    if (weekOffset < 0) weekOffset++;
+    render();
+  });
   document.getElementById("btnWin").addEventListener("click", function () { mark("win"); });
   document.getElementById("btnLose").addEventListener("click", function () { mark("lose"); });
   document.getElementById("celebrateClose").addEventListener("click", function () {
