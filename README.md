@@ -7,8 +7,8 @@ backend, no account, no build step.
 
 - Every weekday (Mon–Fri), open the page and click **✅ Win** or **❌ Lose**.
 - Each win adds a day to your **cumulative streak count**.
-- Clicking **Lose** (or skipping a weekday) resets your streak to **zero**.
-- Weekends don't count and can't break your streak.
+- Clicking **Lose** resets your streak to **zero**.
+- Missed days and weekends don't count and don't break your streak.
 - Win all five days, Monday through Friday, and you earn a **🏅 Perfect Week
   badge** — badges are collected forever on the page.
 

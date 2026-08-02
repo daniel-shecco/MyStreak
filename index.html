@@ -232,22 +232,16 @@
     return m;
   }
 
-  // Streak = consecutive weekday wins ending at the most recent recorded
-  // weekday. A "lose" or a skipped weekday breaks the chain. Weekends are
-  // ignored entirely.
-  function computeStreak(data, today) {
+  // Streak = number of wins since the most recent "lose". Days with no
+  // entry (missed days) are simply skipped and leave the streak as is;
+  // only an explicit lose resets it.
+  function computeStreak(data) {
+    var keys = Object.keys(data.days).sort().reverse();
     var streak = 0;
-    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    // If today has no entry yet, start counting from the previous weekday.
-    if (!data.days[dateKey(d)]) d = new Date(d.getTime() - MS_DAY);
-    while (true) {
-      if (isWeekday(d)) {
-        var v = data.days[dateKey(d)];
-        if (v === "win") streak++;
-        else break; // lose or missing weekday ends the chain
-      }
-      d = new Date(d.getTime() - MS_DAY);
-      if (d.getFullYear() < 2000) break; // safety bound
+    for (var i = 0; i < keys.length; i++) {
+      var v = data.days[keys[i]];
+      if (v === "win") streak++;
+      else if (v === "lose") break;
     }
     return streak;
   }
@@ -278,7 +272,7 @@
   function render() {
     var today = new Date();
     var todayKey = dateKey(today);
-    var streak = computeStreak(data, today);
+    var streak = computeStreak(data);
     var badges = computeBadges(data);
 
     document.getElementById("streakCount").textContent = streak;
