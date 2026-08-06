@@ -196,6 +196,43 @@
   }
   @keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+  .sync-status { font-size: .85rem; color: var(--muted); }
+  .sync-status .dot {
+    display: inline-block;
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    margin-right: .4rem;
+    background: var(--muted);
+  }
+  .sync-status.synced .dot { background: var(--win); }
+  .sync-status.error .dot { background: var(--lose); }
+  .sync-status.syncing .dot { background: var(--accent); }
+  .sync-input { display: flex; gap: .5rem; margin-top: .6rem; }
+  .sync-input input {
+    flex: 1;
+    min-width: 0;
+    padding: .5rem .6rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: .85rem;
+  }
+  .sync-btn {
+    padding: .5rem .9rem;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: .85rem;
+  }
+  .sync-btn.secondary { background: none; border: 1px solid var(--border); color: var(--muted); }
+  .sync-actions { display: flex; gap: .5rem; margin-top: .6rem; }
+  .sync-note { font-size: .75rem; color: var(--muted); margin-top: .5rem; line-height: 1.4; }
+
   footer { text-align: center; }
   footer button {
     background: none;
@@ -249,6 +286,11 @@
   <div class="card">
     <div class="week-title">🏆 Badges</div>
     <div id="badges"></div>
+  </div>
+
+  <div class="card">
+    <div class="week-title">☁️ Cloud sync</div>
+    <div id="syncBody"></div>
   </div>
 
   <footer>
@@ -454,11 +496,176 @@
     }
   }
 
+  // ---- Cloud sync via the GitHub API (optional) ----
+  // Streak data is committed to streak.json on a dedicated branch of this
+  // repo, so it survives cleared browsers and syncs across devices.
+  var TOKEN_KEY = "mystreak-gh-token";
+  var DATA_BRANCH = "streak-data";
+  var DATA_PATH = "streak.json";
+  var GH_OWNER = "daniel-shecco";
+  var GH_REPO = "MyStreak";
+  (function deriveRepo() {
+    var h = location.hostname;
+    if (h && h.indexOf(".github.io") !== -1) {
+      GH_OWNER = h.split(".")[0];
+      var seg = location.pathname.split("/").filter(Boolean);
+      if (seg.length) GH_REPO = seg[0];
+    }
+  })();
+
+  var sync = { sha: null, state: "off", message: "", timer: null, busy: false, pending: false };
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+
+  function gh(path, opts) {
+    opts = opts || {};
+    var headers = {
+      "Accept": "application/vnd.github+json",
+      "Authorization": "Bearer " + getToken()
+    };
+    if (opts.body) headers["Content-Type"] = "application/json";
+    return fetch("https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + path, {
+      method: opts.method || "GET",
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+  }
+
+  function setSyncState(state, message) {
+    sync.state = state;
+    sync.message = message || "";
+    renderSync();
+  }
+
+  function ensureBranch() {
+    return gh("/branches/" + DATA_BRANCH).then(function (r) {
+      if (r.ok) return;
+      if (r.status !== 404) throw new Error("Branch check failed (" + r.status + ")");
+      return gh("").then(function (r2) {
+        if (!r2.ok) throw new Error("Repo lookup failed (" + r2.status + ") — check the token");
+        return r2.json();
+      }).then(function (info) {
+        return gh("/branches/" + encodeURIComponent(info.default_branch)).then(function (r3) { return r3.json(); });
+      }).then(function (b) {
+        return gh("/git/refs", { method: "POST", body: { ref: "refs/heads/" + DATA_BRANCH, sha: b.commit.sha } });
+      }).then(function (r4) {
+        if (!r4.ok) throw new Error("Could not create data branch (" + r4.status + ")");
+      });
+    });
+  }
+
+  function pullRemote() {
+    return gh("/contents/" + DATA_PATH + "?ref=" + DATA_BRANCH + "&t=" + Date.now()).then(function (r) {
+      if (r.status === 404) { sync.sha = null; return null; }
+      if (!r.ok) throw new Error("Read failed (" + r.status + ")");
+      return r.json().then(function (f) {
+        sync.sha = f.sha;
+        try { return JSON.parse(atob(f.content.replace(/\n/g, ""))); }
+        catch (e) { return null; }
+      });
+    });
+  }
+
+  function pushRemote() {
+    var body = {
+      message: "Update streak data",
+      content: btoa(JSON.stringify(data)),
+      branch: DATA_BRANCH
+    };
+    if (sync.sha) body.sha = sync.sha;
+    return gh("/contents/" + DATA_PATH, { method: "PUT", body: body }).then(function (r) {
+      if (r.status !== 409 && r.status !== 422) return r;
+      // Written from elsewhere in the meantime: pull, merge, retry once.
+      return pullRemote().then(function (remote) {
+        if (remote && remote.days) data.days = Object.assign({}, remote.days, data.days);
+        save(data);
+        body.content = btoa(JSON.stringify(data));
+        if (sync.sha) body.sha = sync.sha; else delete body.sha;
+        return gh("/contents/" + DATA_PATH, { method: "PUT", body: body });
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Write failed (" + r.status + ")");
+      return r.json().then(function (res) { sync.sha = res.content.sha; });
+    });
+  }
+
+  function scheduleSync() {
+    if (!getToken()) return;
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(runSync, 1500);
+    setSyncState("syncing", "Saving…");
+  }
+
+  function runSync() {
+    if (sync.busy) { sync.pending = true; return; }
+    sync.busy = true;
+    pushRemote().then(function () {
+      setSyncState("synced", "Saved to GitHub");
+    }, function (e) {
+      setSyncState("error", e.message);
+    }).then(function () {
+      sync.busy = false;
+      if (sync.pending) { sync.pending = false; runSync(); }
+    });
+  }
+
+  function connectSync() {
+    setSyncState("syncing", "Connecting…");
+    ensureBranch().then(pullRemote).then(function (remote) {
+      var remoteDays = (remote && remote.days) || {};
+      var merged = Object.assign({}, remoteDays, data.days);
+      var changed = JSON.stringify(merged) !== JSON.stringify(remoteDays);
+      data.days = merged;
+      save(data);
+      render();
+      if (changed) return pushRemote();
+    }).then(function () {
+      setSyncState("synced", "Synced with GitHub");
+    }, function (e) {
+      setSyncState("error", e.message);
+    });
+  }
+
+  function renderSync() {
+    var el = document.getElementById("syncBody");
+    if (!getToken()) {
+      el.innerHTML =
+        '<div class="sync-status"><span class="dot"></span>Local only — data lives in this browser</div>' +
+        '<div class="sync-input">' +
+        '<input type="password" id="tokenInput" placeholder="Paste a GitHub token to enable sync">' +
+        '<button class="sync-btn" id="connectBtn">Connect</button></div>' +
+        '<div class="sync-note">Saves your streak to <code>' + DATA_PATH + '</code> on a <code>' +
+        DATA_BRANCH + '</code> branch of this repo, so it survives cleared browsers and syncs across devices. ' +
+        'Create a fine-grained personal access token limited to this repository with ' +
+        '<b>Contents: read &amp; write</b>. The token is stored only in this browser.</div>';
+      document.getElementById("connectBtn").addEventListener("click", function () {
+        var t = document.getElementById("tokenInput").value.trim();
+        if (!t) return;
+        localStorage.setItem(TOKEN_KEY, t);
+        connectSync();
+      });
+    } else {
+      el.innerHTML =
+        '<div class="sync-status ' + sync.state + '"><span class="dot"></span>' +
+        (sync.message || "Connected") + "</div>" +
+        '<div class="sync-actions">' +
+        '<button class="sync-btn" id="syncNowBtn">Sync now</button>' +
+        '<button class="sync-btn secondary" id="disconnectBtn">Disconnect</button></div>';
+      document.getElementById("syncNowBtn").addEventListener("click", connectSync);
+      document.getElementById("disconnectBtn").addEventListener("click", function () {
+        localStorage.removeItem(TOKEN_KEY);
+        sync.sha = null;
+        setSyncState("off", "");
+      });
+    }
+  }
+
   function setDay(key, result) {
     var badgesBefore = computeBadges(data).length;
     if (result) data.days[key] = result;
     else delete data.days[key];
     save(data);
+    scheduleSync();
     var badgesAfter = computeBadges(data).length;
     render();
     if (badgesAfter > badgesBefore) {
@@ -496,11 +703,14 @@
     if (confirm("Delete all streak data? This cannot be undone.")) {
       data = { days: {} };
       save(data);
+      scheduleSync();
       render();
     }
   });
 
   render();
+  renderSync();
+  if (getToken()) connectSync();
 })();
 </script>
 </body>

@@ -18,8 +18,36 @@ backend, no account, no build step.
   the next milestone (10, 25, 50, 100, 250, 500, 1000 days), with ⭐ chips
   for every milestone you've already reached.
 
-All data is stored in your browser's `localStorage`, so your streak lives on
-the device/browser you use to track it.
+## Where your data lives
+
+By default all data is stored in your browser's `localStorage`. This survives
+page refreshes and browser restarts, but it is tied to one browser on one
+device, and clearing site data (or using private/incognito mode) wipes it.
+
+### ☁️ Cloud sync (recommended)
+
+GitHub Pages is static hosting — there is no server to run a database like
+SQLite on. Instead, MyStreak can use **this repository itself as the
+database**: it commits your data to a `streak.json` file on a dedicated
+`streak-data` branch via the GitHub API. Your streak then survives anything
+and syncs across all your devices.
+
+To enable it:
+
+1. Create a **fine-grained personal access token**: GitHub → Settings →
+   Developer settings → Personal access tokens → Fine-grained tokens →
+   Generate new token.
+2. Under **Repository access** select **Only select repositories** and pick
+   this repo.
+3. Under **Permissions → Repository permissions** set **Contents** to
+   **Read and write**. Nothing else is needed.
+4. Paste the token into the **Cloud sync** card on the page and hit
+   **Connect**.
+
+The token is stored only in your browser's localStorage and sent only to
+`api.github.com`. Changes are saved automatically a moment after each click;
+opening the page on another device (and connecting with the same token) pulls
+your data down and merges it.
 
 ## Hosting on GitHub Pages
 
