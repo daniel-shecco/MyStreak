@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyStreak — Daily Win Tracker</title>
+<title>Spending Tracker</title>
 <style>
   :root {
     --bg: #f6f7fb;
@@ -11,10 +11,10 @@
     --text: #1a1d27;
     --muted: #6b7280;
     --border: #e5e7eb;
-    --win: #16a34a;
-    --win-soft: #dcfce7;
-    --lose: #dc2626;
-    --lose-soft: #fee2e2;
+    --spend: #2563eb;
+    --spend-soft: #dbeafe;
+    --over: #dc2626;
+    --over-soft: #fee2e2;
     --accent: #f59e0b;
     --accent-soft: #fef3c7;
     --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
@@ -26,8 +26,8 @@
       --text: #eceef4;
       --muted: #9aa1b1;
       --border: #2c3040;
-      --win-soft: #123822;
-      --lose-soft: #3a1618;
+      --spend-soft: #16294d;
+      --over-soft: #3a1618;
       --accent-soft: #3a2c0c;
       --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
     }
@@ -42,7 +42,7 @@
     justify-content: center;
     padding: 2rem 1rem;
   }
-  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 1.25rem; }
+  .app { width: 100%; max-width: 620px; display: flex; flex-direction: column; gap: 1.25rem; }
 
   header { text-align: center; }
   header h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
@@ -55,241 +55,236 @@
     padding: 1.5rem;
     box-shadow: var(--shadow);
   }
-
-  .streak-card { text-align: center; }
-  .streak-flame { font-size: 3rem; line-height: 1; }
-  .streak-count { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.03em; margin-top: .25rem; }
-  .streak-label { color: var(--muted); font-size: .95rem; margin-top: .25rem; }
-
-  .progress-wrap { margin-top: 1.25rem; text-align: left; }
-  .progress-ends {
-    display: flex;
-    justify-content: space-between;
-    font-size: .75rem;
-    font-weight: 700;
-    color: var(--muted);
-    margin-bottom: .3rem;
+  .card-title {
+    font-size: .8rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted); margin-bottom: .75rem;
   }
-  .progress-track {
-    height: 10px;
-    background: var(--border);
-    border-radius: 999px;
-    overflow: hidden;
+
+  /* ---- Month summary ---- */
+  .month-header { display: flex; align-items: center; justify-content: space-between; }
+  .month-name { font-size: 1.05rem; font-weight: 700; }
+  .nav-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); width: 2rem; height: 2rem; cursor: pointer;
+    font-size: 1rem; line-height: 1;
   }
-  .progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--accent), #f97316);
-    border-radius: 999px;
+  .nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .total { text-align: center; margin-top: 1rem; }
+  .total-amount { font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+  .total-label { color: var(--muted); font-size: .9rem; margin-top: .2rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: 1.25rem; }
+  .stat {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: .6rem .4rem; text-align: center;
+  }
+  .stat b { display: block; font-size: .95rem; }
+  .stat span { color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
+
+  .budget-wrap { margin-top: 1.25rem; }
+  .budget-ends {
+    display: flex; justify-content: space-between;
+    font-size: .75rem; font-weight: 700; color: var(--muted); margin-bottom: .3rem;
+  }
+  .budget-track { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .budget-fill {
+    height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--spend), #60a5fa);
     transition: width .4s ease;
   }
-  .progress-text { text-align: center; color: var(--muted); font-size: .8rem; margin-top: .4rem; }
-  .milestones { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin-top: .75rem; }
-  .milestone-chip {
-    font-size: .75rem;
-    font-weight: 700;
-    padding: .2rem .6rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-  .milestone-chip.done {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--text);
-  }
+  .budget-fill.over { background: linear-gradient(90deg, var(--over), #f87171); }
+  .budget-text { text-align: center; color: var(--muted); font-size: .8rem; margin-top: .4rem; }
 
-  .week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
-  .week-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  .week-nav {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    width: 1.8rem;
-    height: 1.8rem;
-    cursor: pointer;
-    font-size: .9rem;
-    line-height: 1;
+  /* ---- Calendar ---- */
+  .cal-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .35rem;
+    margin-bottom: .35rem;
   }
-  .week-nav:disabled { opacity: .35; cursor: not-allowed; }
-  .week { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
-  .day {
+  .cal-head {
+    font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--muted); text-align: center; padding-bottom: .2rem;
+  }
+  .cell {
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: .6rem .25rem;
+    border-radius: 10px;
+    min-height: 3.4rem;
+    padding: .3rem .2rem;
     text-align: center;
-    font-size: .8rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
-  .day .name { color: var(--muted); font-size: .7rem; font-weight: 600; text-transform: uppercase; }
-  .day .mark { font-size: 1.3rem; margin-top: .25rem; line-height: 1.4; }
-  .day.win  { background: var(--win-soft); border-color: var(--win); }
-  .day.lose { background: var(--lose-soft); border-color: var(--lose); }
-  .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .day.clickable { cursor: pointer; }
-  .day.clickable:hover { border-color: var(--accent); }
-  .backfill-hint { color: var(--muted); font-size: .75rem; text-align: center; margin-top: .6rem; }
+  .cell .dnum { font-size: .65rem; color: var(--muted); font-weight: 600; }
+  .cell .amt { font-size: .78rem; font-weight: 700; line-height: 1.2; word-break: break-all; }
+  .cell .amt.zero { color: var(--muted); font-weight: 400; }
+  .cell.spent { background: var(--spend-soft); border-color: var(--spend); }
+  .cell.blank { border-color: transparent; background: none; }
+  .cell.clickable { cursor: pointer; }
+  .cell.clickable:hover { border-color: var(--accent); }
+  .cell.today .dnum { color: var(--accent); }
+  .cell.today { box-shadow: inset 0 0 0 1px var(--accent); }
+  .cell.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-  .actions { display: flex; gap: .75rem; margin-top: 1rem; }
-  .actions button {
-    flex: 1;
-    font-size: 1.05rem;
-    font-weight: 700;
-    padding: .85rem;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    color: #fff;
-    transition: transform .08s ease, opacity .15s ease;
-  }
-  .actions button:active { transform: scale(.97); }
-  .actions button:disabled { opacity: .45; cursor: not-allowed; }
-  .btn-win  { background: var(--win); }
-  .btn-lose { background: var(--lose); }
-  .status-msg { text-align: center; color: var(--muted); font-size: .85rem; margin-top: .75rem; min-height: 1.2em; }
-
-  .badges-empty { color: var(--muted); font-size: .9rem; }
-  .badge-list { display: flex; flex-direction: column; gap: .5rem; }
-  .badge {
+  .week-strip {
     display: flex;
     align-items: center;
-    gap: .75rem;
+    justify-content: space-between;
+    gap: .5rem;
     background: var(--accent-soft);
     border: 1px solid var(--accent);
-    border-radius: 12px;
-    padding: .6rem .9rem;
+    border-radius: 8px;
+    padding: .3rem .6rem;
+    margin-bottom: .8rem;
+    font-size: .75rem;
   }
-  .badge .icon { font-size: 1.6rem; }
-  .badge .info b { display: block; font-size: .95rem; }
-  .badge .info span { color: var(--muted); font-size: .8rem; }
+  .week-strip.empty { background: none; border-color: var(--border); }
+  .week-strip .w-label { color: var(--muted); font-weight: 600; }
+  .week-strip .w-amt { font-weight: 800; }
+  .week-strip.empty .w-amt { font-weight: 400; color: var(--muted); }
+  .cal-foot { font-size: .72rem; color: var(--muted); text-align: center; margin-top: .5rem; }
 
-  .celebrate {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,.45);
-    z-index: 10;
+  @media (max-width: 460px) {
+    body { padding: 1.25rem .6rem; }
+    .card { padding: 1.1rem .9rem; }
+    .total-amount { font-size: 2.5rem; }
+    .cell { min-height: 3rem; }
+    .cell .amt { font-size: .72rem; }
+    .add-form input { font-size: .9rem; }
+    #amountInput { width: 5.5rem; }
   }
-  .celebrate.show { display: flex; }
-  .celebrate .box {
-    background: var(--card);
-    border-radius: 20px;
-    padding: 2rem 2.5rem;
-    text-align: center;
-    box-shadow: var(--shadow);
-    animation: pop .3s ease;
-  }
-  .celebrate .box .big { font-size: 4rem; }
-  .celebrate .box h2 { margin-top: .5rem; }
-  .celebrate .box p { color: var(--muted); margin-top: .25rem; }
-  .celebrate .box button {
-    margin-top: 1.25rem;
-    padding: .6rem 1.5rem;
-    border-radius: 10px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  @keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+  /* ---- Day detail ---- */
+  .day-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .75rem; }
+  .day-date { font-size: 1.05rem; font-weight: 700; }
+  .day-total { font-size: 1.05rem; font-weight: 800; }
+  .entries { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .85rem; }
+  .entry {
+    display: flex; align-items: center; gap: .6rem;
+    border: 1px solid var(--border); border-radius: 10px; padding: .5rem .7rem;
+  }
+  .entry .e-amt { font-weight: 700; font-size: .95rem; }
+  .entry .e-note { flex: 1; color: var(--muted); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry .e-del {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 1.05rem; line-height: 1; padding: 0 .15rem;
+  }
+  .entry .e-del:hover { color: var(--over); }
+  .entries-empty { color: var(--muted); font-size: .88rem; margin-bottom: .85rem; }
+  .add-form { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .add-form input {
+    padding: .6rem .7rem; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: .95rem; min-width: 0;
+  }
+  #amountInput { width: 7.5rem; font-weight: 700; }
+  #noteInput { flex: 1; }
+  .btn {
+    padding: .6rem 1.1rem; border-radius: 10px; border: none;
+    background: var(--spend); color: #fff; font-weight: 700; cursor: pointer; font-size: .95rem;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn.secondary { background: none; border: 1px solid var(--border); color: var(--muted); font-weight: 600; }
+  .form-error { color: var(--over); font-size: .8rem; margin-top: .5rem; min-height: 1em; }
+
+  /* ---- Settings / sync ---- */
+  .setting-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .7rem; }
+  .setting-row label { font-size: .85rem; color: var(--muted); flex: 1; }
+  .setting-row input {
+    width: 7rem; padding: .45rem .6rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: .9rem; text-align: right;
+  }
   .sync-status { font-size: .85rem; color: var(--muted); }
   .sync-status .dot {
-    display: inline-block;
-    width: .55rem;
-    height: .55rem;
-    border-radius: 50%;
-    margin-right: .4rem;
-    background: var(--muted);
+    display: inline-block; width: .55rem; height: .55rem; border-radius: 50%;
+    margin-right: .4rem; background: var(--muted);
   }
-  .sync-status.synced .dot { background: var(--win); }
-  .sync-status.error .dot { background: var(--lose); }
+  .sync-status.synced .dot { background: #16a34a; }
+  .sync-status.error .dot { background: var(--over); }
   .sync-status.syncing .dot { background: var(--accent); }
   .sync-input { display: flex; gap: .5rem; margin-top: .6rem; }
   .sync-input input {
-    flex: 1;
-    min-width: 0;
-    padding: .5rem .6rem;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    font-size: .85rem;
+    flex: 1; min-width: 0; padding: .5rem .6rem; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: .85rem;
   }
   .sync-btn {
-    padding: .5rem .9rem;
-    border-radius: 8px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: .85rem;
+    padding: .5rem .9rem; border-radius: 8px; border: none;
+    background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; font-size: .85rem;
   }
   .sync-btn.secondary { background: none; border: 1px solid var(--border); color: var(--muted); }
   .sync-actions { display: flex; gap: .5rem; margin-top: .6rem; }
   .sync-note { font-size: .75rem; color: var(--muted); margin-top: .5rem; line-height: 1.4; }
+  .divider { height: 1px; background: var(--border); margin: 1rem 0; }
 
   footer { text-align: center; }
   footer button {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-size: .75rem;
-    cursor: pointer;
-    text-decoration: underline;
+    background: none; border: none; color: var(--muted);
+    font-size: .75rem; cursor: pointer; text-decoration: underline;
   }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>🔥 MyStreak</h1>
-    <p>Win every weekday. Five wins Mon–Fri earn a badge.</p>
+    <h1>💸 Spending Tracker</h1>
+    <p>Log what you spend. See it by day, week, and month.</p>
   </header>
 
-  <div class="card streak-card">
-    <div class="streak-flame" id="flame">🔥</div>
-    <div class="streak-count" id="streakCount">0</div>
-    <div class="streak-label" id="streakLabel">day streak</div>
-    <div class="progress-wrap">
-      <div class="progress-ends">
-        <span id="progressFrom">0</span>
-        <span id="progressTo">10</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-      <div class="progress-text" id="progressText"></div>
-      <div class="milestones" id="milestones"></div>
+  <div class="card">
+    <div class="month-header">
+      <button class="nav-btn" id="prevMonth" title="Previous month">‹</button>
+      <div class="month-name" id="monthName">Month</div>
+      <button class="nav-btn" id="nextMonth" title="Next month">›</button>
+    </div>
+    <div class="total">
+      <div class="total-amount" id="monthTotal">0</div>
+      <div class="total-label">spent this month</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="statDays">0</b><span>days with spend</span></div>
+      <div class="stat"><b id="statAvg">0</b><span>avg / day</span></div>
+      <div class="stat"><b id="statMax">0</b><span>biggest day</span></div>
+    </div>
+    <div class="budget-wrap" id="budgetWrap">
+      <div class="budget-ends"><span id="budgetFrom">0</span><span id="budgetTo"></span></div>
+      <div class="budget-track"><div class="budget-fill" id="budgetFill"></div></div>
+      <div class="budget-text" id="budgetText"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="week-header">
-      <button class="week-nav" id="prevWeek" title="Previous week">‹</button>
-      <div class="week-title" id="weekTitle">This week</div>
-      <button class="week-nav" id="nextWeek" title="Next week">›</button>
-    </div>
-    <div class="week" id="week"></div>
-    <div class="backfill-hint">Forgot a day? Tap a past day to cycle it: · → ✅ → ❌ → ·</div>
-    <div class="actions">
-      <button class="btn-win" id="btnWin">✅ Win</button>
-      <button class="btn-lose" id="btnLose">❌ Lose</button>
-    </div>
-    <div class="status-msg" id="statusMsg"></div>
+    <div class="card-title">📅 Month at a glance</div>
+    <div class="cal-row" id="calHead"></div>
+    <div id="calBody"></div>
+    <div class="cal-foot">Tap any day to add or edit its expenses.</div>
   </div>
 
   <div class="card">
-    <div class="week-title">🏆 Badges</div>
-    <div id="badges"></div>
+    <div class="day-head">
+      <div class="day-date" id="dayDate">Today</div>
+      <div class="day-total" id="dayTotal">0</div>
+    </div>
+    <div id="entriesArea"></div>
+    <form class="add-form" id="addForm">
+      <input type="text" id="amountInput" inputmode="decimal" placeholder="0.00" autocomplete="off">
+      <input type="text" id="noteInput" placeholder="What for? (optional)" autocomplete="off">
+      <button type="submit" class="btn">Add</button>
+    </form>
+    <div class="form-error" id="formError"></div>
   </div>
 
   <div class="card">
-    <div class="week-title">☁️ Cloud sync</div>
+    <div class="card-title">⚙️ Settings</div>
+    <div class="setting-row">
+      <label for="currencyInput">Currency symbol</label>
+      <input type="text" id="currencyInput" maxlength="3">
+    </div>
+    <div class="setting-row">
+      <label for="budgetInput">Monthly budget (blank = none)</label>
+      <input type="text" id="budgetInput" inputmode="decimal" placeholder="none">
+    </div>
+    <div class="divider"></div>
+    <div class="card-title">☁️ Cloud sync</div>
     <div id="syncBody"></div>
   </div>
 
@@ -298,210 +293,333 @@
   </footer>
 </div>
 
-<div class="celebrate" id="celebrate">
-  <div class="box">
-    <div class="big">🏅</div>
-    <h2>Perfect Week!</h2>
-    <p>Five wins, Monday to Friday. Badge earned!</p>
-    <button id="celebrateClose">Nice!</button>
-  </div>
-</div>
-
 <script>
 (function () {
-  var STORE_KEY = "mystreak-data-v1";
-  var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-  var MS_DAY = 86400000;
-  var MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+  var STORE_KEY = "myspend-data-v1";
+  var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+                     "July", "August", "September", "October", "November", "December"];
+
+  // ---- Storage ----
+  // currency is null until the user picks one, so a synced choice can win
+  // over another device's untouched default.
+  function blank() { return { version: 1, currency: null, budget: null, entries: {}, deletedIds: [] }; }
+  function currency() { return data.currency || "$"; }
 
   function load() {
     try {
       var raw = localStorage.getItem(STORE_KEY);
-      var data = raw ? JSON.parse(raw) : {};
-      if (!data.days || typeof data.days !== "object") data.days = {};
-      return data;
-    } catch (e) {
-      return { days: {} };
-    }
+      var d = raw ? JSON.parse(raw) : blank();
+      if (!d || typeof d !== "object") d = blank();
+      if (!d.entries || typeof d.entries !== "object") d.entries = {};
+      if (!Array.isArray(d.deletedIds)) d.deletedIds = [];
+      if (typeof d.currency !== "string" || !d.currency) d.currency = null;
+      if (typeof d.budget !== "number") d.budget = null;
+      return d;
+    } catch (e) { return blank(); }
   }
-  function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+  function save(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
 
+  // ---- Money helpers (all amounts held as integer cents) ----
+  function parseAmount(str) {
+    if (typeof str !== "string") return null;
+    var s = str.trim().replace(/[^\d.,-]/g, "");
+    if (!s) return null;
+    // Treat a lone comma as a decimal separator (1,50 -> 1.50); drop thousands separators.
+    if (s.indexOf(",") !== -1 && s.indexOf(".") === -1) s = s.replace(",", ".");
+    else s = s.replace(/,/g, "");
+    var n = parseFloat(s);
+    if (isNaN(n) || !isFinite(n)) return null;
+    return Math.round(n * 100);
+  }
+  function money(cents) {
+    var neg = cents < 0;
+    var v = Math.abs(cents) / 100;
+    return (neg ? "-" : "") + currency() + v.toFixed(2);
+  }
+  // Compact form for calendar cells: no symbol, and no ".00" on whole amounts.
+  function compact(cents) {
+    var v = cents / 100;
+    return v % 1 === 0 ? String(v) : v.toFixed(2);
+  }
+
+  // ---- Date helpers ----
   function dateKey(d) {
     return d.getFullYear() + "-" +
       String(d.getMonth() + 1).padStart(2, "0") + "-" +
       String(d.getDate()).padStart(2, "0");
   }
-  function keyToDate(key) {
-    var p = key.split("-");
-    return new Date(+p[0], +p[1] - 1, +p[2]);
-  }
-  function isWeekday(d) { var w = d.getDay(); return w >= 1 && w <= 5; }
-
-  // Monday of the week containing d
   function mondayOf(d) {
     var m = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    var shift = (m.getDay() + 6) % 7; // Mon=0 ... Sun=6
-    m.setDate(m.getDate() - shift);
+    m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); // Mon=0 ... Sun=6
     return m;
   }
+  function sameMonth(d, y, m) { return d.getFullYear() === y && d.getMonth() === m; }
 
-  // Streak = number of wins since the most recent "lose". Days with no
-  // entry (missed days) are simply skipped and leave the streak as is;
-  // only an explicit lose resets it.
-  function computeStreak(data) {
-    var keys = Object.keys(data.days).sort().reverse();
-    var streak = 0;
-    for (var i = 0; i < keys.length; i++) {
-      var v = data.days[keys[i]];
-      if (v === "win") streak++;
-      else if (v === "lose") break;
-    }
-    return streak;
+  // ---- Totals ----
+  function entriesFor(key) { return data.entries[key] || []; }
+  function dayTotal(key) {
+    return entriesFor(key).reduce(function (sum, e) { return sum + e.cents; }, 0);
+  }
+  function monthDays(y, m) {
+    var keys = [], last = new Date(y, m + 1, 0).getDate();
+    for (var i = 1; i <= last; i++) keys.push(dateKey(new Date(y, m, i)));
+    return keys;
+  }
+  function monthTotal(y, m) {
+    return monthDays(y, m).reduce(function (sum, k) { return sum + dayTotal(k); }, 0);
   }
 
-  // A badge for every week whose Mon–Fri are all wins.
-  function computeBadges(data) {
-    var weeks = {};
-    Object.keys(data.days).forEach(function (key) {
-      if (data.days[key] !== "win") return;
-      var d = keyToDate(key);
-      if (!isWeekday(d)) return;
-      var mon = mondayOf(d);
-      var wk = dateKey(mon);
-      weeks[wk] = (weeks[wk] || 0) + 1;
-    });
-    return Object.keys(weeks)
-      .filter(function (wk) { return weeks[wk] === 5; })
-      .sort()
-      .reverse();
-  }
-
-  function fmt(d) {
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }
-
+  // ---- State ----
   var data = load();
-  var weekOffset = 0; // 0 = current week, -1 = last week, ...
+  var today = new Date();
+  var viewYear = today.getFullYear();
+  var viewMonth = today.getMonth();
+  var selectedKey = dateKey(today);
 
+  // ---- Rendering ----
   function render() {
-    var today = new Date();
-    var todayKey = dateKey(today);
-    var streak = computeStreak(data);
-    var badges = computeBadges(data);
+    renderSummary();
+    renderCalendar();
+    renderDay();
+    renderSettings();
+  }
 
-    document.getElementById("streakCount").textContent = streak;
-    document.getElementById("streakLabel").textContent =
-      streak === 1 ? "day streak" : "day streak";
-    document.getElementById("flame").textContent =
-      streak >= 20 ? "🌋" : streak >= 10 ? "🔥🔥" : streak >= 1 ? "🔥" : "💤";
+  function renderSummary() {
+    document.getElementById("monthName").textContent = MONTH_NAMES[viewMonth] + " " + viewYear;
+    var total = monthTotal(viewYear, viewMonth);
+    document.getElementById("monthTotal").textContent = money(total);
 
-    // Milestone progression bar
-    var next = null, prev = 0;
-    for (var m = 0; m < MILESTONES.length; m++) {
-      if (streak < MILESTONES[m]) { next = MILESTONES[m]; break; }
-      prev = MILESTONES[m];
-    }
-    var fillEl = document.getElementById("progressFill");
-    var textEl = document.getElementById("progressText");
-    if (next === null) {
-      document.getElementById("progressFrom").textContent = prev;
-      document.getElementById("progressTo").textContent = "🏆";
-      fillEl.style.width = "100%";
-      textEl.textContent = "All milestones crushed — " + streak + " days!";
-    } else {
-      document.getElementById("progressFrom").textContent = prev;
-      document.getElementById("progressTo").textContent = next;
-      var pct = ((streak - prev) / (next - prev)) * 100;
-      fillEl.style.width = Math.max(0, Math.min(100, pct)) + "%";
-      var left = next - streak;
-      textEl.textContent = left + (left === 1 ? " day" : " days") + " to " + next;
-    }
-    var msEl = document.getElementById("milestones");
-    msEl.innerHTML = "";
-    MILESTONES.forEach(function (ms) {
-      var chip = document.createElement("span");
-      chip.className = "milestone-chip" + (streak >= ms ? " done" : "");
-      chip.textContent = (streak >= ms ? "⭐ " : "") + ms;
-      msEl.appendChild(chip);
+    var keys = monthDays(viewYear, viewMonth);
+    var spentDays = 0, biggest = 0;
+    keys.forEach(function (k) {
+      var t = dayTotal(k);
+      if (t !== 0) spentDays++;
+      if (t > biggest) biggest = t;
     });
+    // Average over elapsed days for the current month, whole month otherwise.
+    var elapsed = sameMonth(today, viewYear, viewMonth) ? today.getDate() : keys.length;
+    document.getElementById("statDays").textContent = spentDays;
+    document.getElementById("statAvg").textContent = money(elapsed ? Math.round(total / elapsed) : 0);
+    document.getElementById("statMax").textContent = money(biggest);
 
-    // Week view (weekOffset weeks back from the current week)
-    var curMon = mondayOf(today);
-    var mon = new Date(curMon.getFullYear(), curMon.getMonth(), curMon.getDate() + weekOffset * 7);
-    var fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
-    document.getElementById("weekTitle").textContent =
-      (weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : "Week of " + fmt(mon)) +
-      " · " + fmt(mon) + " – " + fmt(fri);
-    document.getElementById("nextWeek").disabled = weekOffset === 0;
-
-    var weekEl = document.getElementById("week");
-    weekEl.innerHTML = "";
-    for (var i = 0; i < 5; i++) {
-      var d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i);
-      var key = dateKey(d);
-      var v = data.days[key];
-      var isPastOrToday = key <= todayKey;
-      var cell = document.createElement("div");
-      cell.className = "day" + (v ? " " + v : "") +
-        (key === todayKey ? " today" : "") +
-        (isPastOrToday ? " clickable" : "");
-      cell.innerHTML =
-        '<div class="name">' + DAY_NAMES[i] + "</div>" +
-        '<div class="mark">' + (v === "win" ? "✅" : v === "lose" ? "❌" : "·") + "</div>";
-      if (isPastOrToday) {
-        cell.addEventListener("click", cycleDay.bind(null, key));
-      }
-      weekEl.appendChild(cell);
-    }
-
-    // Buttons + status
-    var btnWin = document.getElementById("btnWin");
-    var btnLose = document.getElementById("btnLose");
-    var msg = document.getElementById("statusMsg");
-    if (!isWeekday(today)) {
-      btnWin.disabled = true;
-      btnLose.disabled = true;
-      msg.textContent = "It's the weekend — your streak is safe. See you Monday!";
-    } else if (data.days[todayKey]) {
-      btnWin.disabled = false;
-      btnLose.disabled = false;
-      msg.textContent = "Today is marked as a " +
-        (data.days[todayKey] === "win" ? "win ✅" : "loss ❌") +
-        " — tap the other button to change it.";
+    var wrap = document.getElementById("budgetWrap");
+    if (data.budget == null) {
+      wrap.style.display = "none";
     } else {
-      btnWin.disabled = false;
-      btnLose.disabled = false;
-      msg.textContent = "How did today go?";
-    }
-
-    // Badges
-    var badgesEl = document.getElementById("badges");
-    if (badges.length === 0) {
-      badgesEl.innerHTML = '<div class="badges-empty">No badges yet. Win Monday through Friday to earn your first one!</div>';
-    } else {
-      var list = document.createElement("div");
-      list.className = "badge-list";
-      badges.forEach(function (wk) {
-        var m = keyToDate(wk);
-        var f = new Date(m.getTime() + 4 * MS_DAY);
-        var el = document.createElement("div");
-        el.className = "badge";
-        el.innerHTML =
-          '<div class="icon">🏅</div>' +
-          '<div class="info"><b>Perfect Week</b><span>' + fmt(m) + " – " + fmt(f) + "</span></div>";
-        list.appendChild(el);
-      });
-      badgesEl.innerHTML = "";
-      badgesEl.appendChild(list);
+      wrap.style.display = "";
+      var pct = data.budget > 0 ? (total / data.budget) * 100 : 100;
+      var fill = document.getElementById("budgetFill");
+      fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      fill.classList.toggle("over", total > data.budget);
+      document.getElementById("budgetFrom").textContent = money(0);
+      document.getElementById("budgetTo").textContent = money(data.budget);
+      var left = data.budget - total;
+      document.getElementById("budgetText").textContent = left >= 0
+        ? money(left) + " left · " + Math.round(pct) + "% of budget used"
+        : money(-left) + " over budget";
     }
   }
+
+  function renderCalendar() {
+    var head = document.getElementById("calHead");
+    head.innerHTML = "";
+    DAY_NAMES.forEach(function (n) {
+      var c = document.createElement("div");
+      c.className = "cal-head";
+      c.textContent = n;
+      head.appendChild(c);
+    });
+
+    var body = document.getElementById("calBody");
+    body.innerHTML = "";
+    var todayKey = dateKey(today);
+    var cursor = mondayOf(new Date(viewYear, viewMonth, 1));
+    var lastDay = new Date(viewYear, viewMonth + 1, 0);
+
+    while (cursor <= lastDay) {
+      var row = document.createElement("div");
+      row.className = "cal-row";
+      var weekSum = 0, firstIn = null, lastIn = null;
+
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + i);
+        var cell = document.createElement("div");
+        if (!sameMonth(d, viewYear, viewMonth)) {
+          cell.className = "cell blank";
+        } else {
+          var key = dateKey(d);
+          var t = dayTotal(key);
+          weekSum += t;
+          if (firstIn === null) firstIn = d.getDate();
+          lastIn = d.getDate();
+          cell.className = "cell clickable" +
+            (t !== 0 ? " spent" : "") +
+            (key === todayKey ? " today" : "") +
+            (key === selectedKey ? " selected" : "");
+          cell.innerHTML =
+            '<div class="dnum">' + d.getDate() + "</div>" +
+            '<div class="amt' + (t === 0 ? " zero" : "") + '">' + (t === 0 ? "·" : compact(t)) + "</div>";
+          cell.addEventListener("click", selectDay.bind(null, key));
+        }
+        row.appendChild(cell);
+      }
+
+      body.appendChild(row);
+
+      var strip = document.createElement("div");
+      strip.className = "week-strip" + (weekSum === 0 ? " empty" : "");
+      strip.title = "Total for the days of " + MONTH_NAMES[viewMonth] + " in this week";
+      var span = MONTH_NAMES[viewMonth].slice(0, 3) + " " + firstIn +
+        (lastIn !== firstIn ? "–" + lastIn : "");
+      strip.innerHTML =
+        '<span class="w-label">Week of ' + span + "</span>" +
+        '<span class="w-amt">' + money(weekSum) + "</span>";
+      body.appendChild(strip);
+
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7);
+    }
+  }
+
+  function renderDay() {
+    var p = selectedKey.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var label = d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+    if (selectedKey === dateKey(today)) label = "Today · " + label;
+    document.getElementById("dayDate").textContent = label;
+    document.getElementById("dayTotal").textContent = money(dayTotal(selectedKey));
+
+    var area = document.getElementById("entriesArea");
+    var list = entriesFor(selectedKey);
+    if (!list.length) {
+      area.innerHTML = '<div class="entries-empty">Nothing logged for this day yet.</div>';
+      return;
+    }
+    var wrap = document.createElement("div");
+    wrap.className = "entries";
+    list.forEach(function (e) {
+      var row = document.createElement("div");
+      row.className = "entry";
+      var amt = document.createElement("div");
+      amt.className = "e-amt";
+      amt.textContent = money(e.cents);
+      var note = document.createElement("div");
+      note.className = "e-note";
+      note.textContent = e.note || "";
+      var del = document.createElement("button");
+      del.className = "e-del";
+      del.type = "button";
+      del.textContent = "×";
+      del.title = "Delete";
+      del.addEventListener("click", deleteEntry.bind(null, selectedKey, e.id));
+      row.appendChild(amt);
+      row.appendChild(note);
+      row.appendChild(del);
+      wrap.appendChild(row);
+    });
+    area.innerHTML = "";
+    area.appendChild(wrap);
+  }
+
+  function renderSettings() {
+    var cur = document.getElementById("currencyInput");
+    if (document.activeElement !== cur) cur.value = currency();
+    var bud = document.getElementById("budgetInput");
+    if (document.activeElement !== bud) bud.value = data.budget == null ? "" : (data.budget / 100).toFixed(2);
+  }
+
+  // ---- Actions ----
+  function selectDay(key) {
+    selectedKey = key;
+    render();
+    document.getElementById("amountInput").focus();
+  }
+
+  function newId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function addEntry(cents, note) {
+    if (!data.entries[selectedKey]) data.entries[selectedKey] = [];
+    data.entries[selectedKey].push({ id: newId(), cents: cents, note: note });
+    persist();
+  }
+
+  function deleteEntry(key, id) {
+    var list = data.entries[key] || [];
+    data.entries[key] = list.filter(function (e) { return e.id !== id; });
+    if (!data.entries[key].length) delete data.entries[key];
+    if (data.deletedIds.indexOf(id) === -1) data.deletedIds.push(id);
+    persist();
+  }
+
+  function persist() {
+    save(data);
+    scheduleSync();
+    render();
+  }
+
+  document.getElementById("addForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var input = document.getElementById("amountInput");
+    var noteEl = document.getElementById("noteInput");
+    var err = document.getElementById("formError");
+    var cents = parseAmount(input.value);
+    if (cents === null || cents === 0) {
+      err.textContent = "Enter an amount, e.g. 12.50";
+      return;
+    }
+    err.textContent = "";
+    addEntry(cents, noteEl.value.trim());
+    input.value = "";
+    noteEl.value = "";
+    input.focus();
+  });
+
+  document.getElementById("prevMonth").addEventListener("click", function () {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    render();
+  });
+  document.getElementById("nextMonth").addEventListener("click", function () {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    render();
+  });
+
+  document.getElementById("currencyInput").addEventListener("input", function () {
+    data.currency = this.value.trim() || null;
+    save(data);
+    scheduleSync();
+    renderSummary();
+    renderDay();
+  });
+  document.getElementById("budgetInput").addEventListener("input", function () {
+    var v = this.value.trim();
+    data.budget = v === "" ? null : parseAmount(v);
+    save(data);
+    scheduleSync();
+    renderSummary();
+  });
+
+  document.getElementById("resetAll").addEventListener("click", function () {
+    if (confirm("Delete all spending data? This cannot be undone.")) {
+      var keep = data.deletedIds.slice();
+      Object.keys(data.entries).forEach(function (k) {
+        data.entries[k].forEach(function (e) { keep.push(e.id); });
+      });
+      data = blank();
+      data.deletedIds = keep;
+      persist();
+    }
+  });
 
   // ---- Cloud sync via the GitHub API (optional) ----
-  // Streak data is committed to streak.json on a dedicated branch of this
+  // Spending data is committed to spending.json on a dedicated branch of this
   // repo, so it survives cleared browsers and syncs across devices.
-  var TOKEN_KEY = "mystreak-gh-token";
-  var DATA_BRANCH = "streak-data";
-  var DATA_PATH = "streak.json";
+  var TOKEN_KEY = "myspend-gh-token";
+  var DATA_BRANCH = "spending-data";
+  var DATA_PATH = "spending.json";
   var GH_OWNER = "daniel-shecco";
   var GH_REPO = "MyStreak";
   (function deriveRepo() {
@@ -537,6 +655,31 @@
     renderSync();
   }
 
+  // Union entries by id across devices, minus anything either side deleted.
+  function mergeData(remote, local) {
+    if (!remote || typeof remote !== "object") return local;
+    var out = blank();
+    out.currency = local.currency || remote.currency || null;
+    out.budget = local.budget != null ? local.budget : (typeof remote.budget === "number" ? remote.budget : null);
+
+    var tomb = {};
+    (remote.deletedIds || []).concat(local.deletedIds || []).forEach(function (id) { tomb[id] = 1; });
+
+    var keys = {};
+    Object.keys(remote.entries || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(local.entries || {}).forEach(function (k) { keys[k] = 1; });
+
+    Object.keys(keys).forEach(function (k) {
+      var byId = {};
+      ((remote.entries || {})[k] || []).forEach(function (e) { if (e && e.id && !tomb[e.id]) byId[e.id] = e; });
+      ((local.entries || {})[k] || []).forEach(function (e) { if (e && e.id && !tomb[e.id]) byId[e.id] = e; });
+      var list = Object.keys(byId).map(function (id) { return byId[id]; });
+      if (list.length) out.entries[k] = list;
+    });
+    out.deletedIds = Object.keys(tomb);
+    return out;
+  }
+
   function ensureBranch() {
     return gh("/branches/" + DATA_BRANCH).then(function (r) {
       if (r.ok) return;
@@ -560,26 +703,27 @@
       if (!r.ok) throw new Error("Read failed (" + r.status + ")");
       return r.json().then(function (f) {
         sync.sha = f.sha;
-        try { return JSON.parse(atob(f.content.replace(/\n/g, ""))); }
+        try { return JSON.parse(decodeURIComponent(escape(atob(f.content.replace(/\n/g, ""))))); }
         catch (e) { return null; }
       });
     });
   }
 
+  function encode(obj) {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  }
+
   function pushRemote() {
-    var body = {
-      message: "Update streak data",
-      content: btoa(JSON.stringify(data)),
-      branch: DATA_BRANCH
-    };
+    var body = { message: "Update spending data", content: encode(data), branch: DATA_BRANCH };
     if (sync.sha) body.sha = sync.sha;
     return gh("/contents/" + DATA_PATH, { method: "PUT", body: body }).then(function (r) {
       if (r.status !== 409 && r.status !== 422) return r;
       // Written from elsewhere in the meantime: pull, merge, retry once.
       return pullRemote().then(function (remote) {
-        if (remote && remote.days) data.days = Object.assign({}, remote.days, data.days);
+        data = mergeData(remote, data);
         save(data);
-        body.content = btoa(JSON.stringify(data));
+        render();
+        body.content = encode(data);
         if (sync.sha) body.sha = sync.sha; else delete body.sha;
         return gh("/contents/" + DATA_PATH, { method: "PUT", body: body });
       });
@@ -612,13 +756,11 @@
   function connectSync() {
     setSyncState("syncing", "Connecting…");
     ensureBranch().then(pullRemote).then(function (remote) {
-      var remoteDays = (remote && remote.days) || {};
-      var merged = Object.assign({}, remoteDays, data.days);
-      var changed = JSON.stringify(merged) !== JSON.stringify(remoteDays);
-      data.days = merged;
+      var before = JSON.stringify(remote);
+      data = mergeData(remote, data);
       save(data);
       render();
-      if (changed) return pushRemote();
+      if (JSON.stringify(data) !== before) return pushRemote();
     }).then(function () {
       setSyncState("synced", "Synced with GitHub");
     }, function (e) {
@@ -634,7 +776,7 @@
         '<div class="sync-input">' +
         '<input type="password" id="tokenInput" placeholder="Paste a GitHub token to enable sync">' +
         '<button class="sync-btn" id="connectBtn">Connect</button></div>' +
-        '<div class="sync-note">Saves your streak to <code>' + DATA_PATH + '</code> on a <code>' +
+        '<div class="sync-note">Saves your spending to <code>' + DATA_PATH + '</code> on a <code>' +
         DATA_BRANCH + '</code> branch of this repo, so it survives cleared browsers and syncs across devices. ' +
         'Create a fine-grained personal access token limited to this repository with ' +
         '<b>Contents: read &amp; write</b>. The token is stored only in this browser.</div>';
@@ -659,54 +801,6 @@
       });
     }
   }
-
-  function setDay(key, result) {
-    var badgesBefore = computeBadges(data).length;
-    if (result) data.days[key] = result;
-    else delete data.days[key];
-    save(data);
-    scheduleSync();
-    var badgesAfter = computeBadges(data).length;
-    render();
-    if (badgesAfter > badgesBefore) {
-      document.getElementById("celebrate").classList.add("show");
-    }
-  }
-
-  function mark(result) {
-    var today = new Date();
-    if (!isWeekday(today)) return;
-    setDay(dateKey(today), result);
-  }
-
-  // Backfill: tapping a past (or today's) weekday tile cycles it
-  // through unset -> win -> lose -> unset.
-  function cycleDay(key) {
-    var v = data.days[key];
-    setDay(key, v === "win" ? "lose" : v === "lose" ? null : "win");
-  }
-
-  document.getElementById("prevWeek").addEventListener("click", function () {
-    weekOffset--;
-    render();
-  });
-  document.getElementById("nextWeek").addEventListener("click", function () {
-    if (weekOffset < 0) weekOffset++;
-    render();
-  });
-  document.getElementById("btnWin").addEventListener("click", function () { mark("win"); });
-  document.getElementById("btnLose").addEventListener("click", function () { mark("lose"); });
-  document.getElementById("celebrateClose").addEventListener("click", function () {
-    document.getElementById("celebrate").classList.remove("show");
-  });
-  document.getElementById("resetAll").addEventListener("click", function () {
-    if (confirm("Delete all streak data? This cannot be undone.")) {
-      data = { days: {} };
-      save(data);
-      scheduleSync();
-      render();
-    }
-  });
 
   render();
   renderSync();

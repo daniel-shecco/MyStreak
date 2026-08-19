@@ -1,22 +1,27 @@
-# 🔥 MyStreak
+# 💸 Spending Tracker
 
-A simple weekday streak tracker that runs entirely in your browser — no
+A simple monthly spending tracker that runs entirely in your browser — no
 backend, no account, no build step.
 
 ## How it works
 
-- Every weekday (Mon–Fri), open the page and click **✅ Win** or **❌ Lose**.
-- Each win adds a day to your **cumulative streak count**.
-- Clicking **Lose** resets your streak to **zero**.
-- Missed days and weekends don't count and don't break your streak.
-- Win all five days, Monday through Friday, and you earn a **🏅 Perfect Week
-  badge** — badges are collected forever on the page.
-- **Forgot to log a day?** Tap any past day tile to cycle it through
-  unset → ✅ win → ❌ lose → unset, and use the ‹ › arrows to reach
-  earlier weeks.
-- A **progression bar** under the streak counter tracks your climb toward
-  the next milestone (10, 25, 50, 100, 250, 500, 1000 days), with ⭐ chips
-  for every milestone you've already reached.
+- Tap any day in the month grid, then add what you spent. You can add **as
+  many amounts per day as you like** (with an optional note like "groceries"),
+  not just one figure per day.
+- Each day cell shows that **day's total**.
+- A strip under each calendar row shows that **week's total**.
+- The big number at the top is the **month's total**, alongside the number of
+  days with spending, the average per day, and your biggest day.
+- Use the ‹ › arrows to move between months.
+- Optionally set a **monthly budget** and a progress bar tracks how much of it
+  you've used, turning red if you go over.
+
+Amounts are stored as whole cents internally, so the daily, weekly, and
+monthly sums always add up exactly.
+
+> Weekly totals cover only the days of the displayed month, so the week
+> totals always sum to the month total even when a calendar week straddles
+> two months.
 
 ## Where your data lives
 
@@ -27,10 +32,10 @@ device, and clearing site data (or using private/incognito mode) wipes it.
 ### ☁️ Cloud sync (recommended)
 
 GitHub Pages is static hosting — there is no server to run a database like
-SQLite on. Instead, MyStreak can use **this repository itself as the
-database**: it commits your data to a `streak.json` file on a dedicated
-`streak-data` branch via the GitHub API. Your streak then survives anything
-and syncs across all your devices.
+SQLite on. Instead, this app can use **the repository itself as the
+database**: it commits your data to a `spending.json` file on a dedicated
+`spending-data` branch via the GitHub API. Your history then survives
+anything and syncs across all your devices.
 
 To enable it:
 
@@ -41,13 +46,14 @@ To enable it:
    this repo.
 3. Under **Permissions → Repository permissions** set **Contents** to
    **Read and write**. Nothing else is needed.
-4. Paste the token into the **Cloud sync** card on the page and hit
+4. Paste the token into the **Cloud sync** box on the page and hit
    **Connect**.
 
 The token is stored only in your browser's localStorage and sent only to
-`api.github.com`. Changes are saved automatically a moment after each click;
-opening the page on another device (and connecting with the same token) pulls
-your data down and merges it.
+`api.github.com`. Changes save automatically a moment after each edit;
+opening the page on another device (and connecting with the same token)
+merges both sides — expenses are matched by id, and anything you delete stays
+deleted.
 
 ## Hosting on GitHub Pages
 
