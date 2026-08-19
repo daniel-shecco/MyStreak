@@ -26,6 +26,13 @@ Both thresholds are "strictly above", so a day of exactly €20.00 and a month
 of exactly €600.00 stay normal. Both are editable in **Settings** (clear a
 field to switch that rule off), and the currency symbol is configurable too.
 
+## Theme
+
+The button in the top-right corner cycles **🖥️ Auto → ☀️ Light → 🌙 Dark**.
+Auto follows your device's appearance setting; picking Light or Dark forces
+that theme and is remembered on the device (it is deliberately not synced, so
+each device keeps its own preference).
+
 Amounts are stored as whole cents internally, so the daily, weekly, and
 monthly sums always add up exactly.
 
