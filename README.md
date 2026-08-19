@@ -13,8 +13,18 @@ backend, no account, no build step.
 - The big number at the top is the **month's total**, alongside the number of
   days with spending, the average per day, and your biggest day.
 - Use the ‹ › arrows to move between months.
-- Optionally set a **monthly budget** and a progress bar tracks how much of it
-  you've used, turning red if you go over.
+
+## Red flags
+
+Amounts are in **euros (€)** by default.
+
+- Any day totalling **above €20** is highlighted **red** in the grid.
+- If the **month totals above €600**, the whole month view turns red — the
+  total, the month name, and both cards — with a warning under the budget bar.
+
+Both thresholds are "strictly above", so a day of exactly €20.00 and a month
+of exactly €600.00 stay normal. Both are editable in **Settings** (clear a
+field to switch that rule off), and the currency symbol is configurable too.
 
 Amounts are stored as whole cents internally, so the daily, weekly, and
 monthly sums always add up exactly.

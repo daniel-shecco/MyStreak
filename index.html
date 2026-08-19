@@ -15,6 +15,7 @@
     --spend-soft: #dbeafe;
     --over: #dc2626;
     --over-soft: #fee2e2;
+    --over-tint: #fdf3f3;
     --accent: #f59e0b;
     --accent-soft: #fef3c7;
     --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
@@ -28,6 +29,7 @@
       --border: #2c3040;
       --spend-soft: #16294d;
       --over-soft: #3a1618;
+      --over-tint: #241519;
       --accent-soft: #3a2c0c;
       --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
     }
@@ -95,6 +97,24 @@
   .budget-fill.over { background: linear-gradient(90deg, var(--over), #f87171); }
   .budget-text { text-align: center; color: var(--muted); font-size: .8rem; margin-top: .4rem; }
 
+  /* Month over its limit: the whole month view goes red. */
+  .app.month-over .month-card,
+  .app.month-over .cal-card { border-color: var(--over); background: var(--over-tint); }
+  .app.month-over .total-amount { color: var(--over); }
+  .app.month-over .month-name { color: var(--over); }
+  .app.month-over .budget-text { color: var(--over); font-weight: 700; }
+  .app.month-over .stat { border-color: var(--over-soft); }
+  .app.month-over .cell.blank { background: none; }
+  .month-flag {
+    display: none;
+    margin-top: .75rem;
+    text-align: center;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--over);
+  }
+  .app.month-over .month-flag { display: block; }
+
   /* ---- Calendar ---- */
   .cal-row {
     display: grid;
@@ -120,6 +140,8 @@
   .cell .amt { font-size: .78rem; font-weight: 700; line-height: 1.2; word-break: break-all; }
   .cell .amt.zero { color: var(--muted); font-weight: 400; }
   .cell.spent { background: var(--spend-soft); border-color: var(--spend); }
+  .cell.over { background: var(--over-soft); border-color: var(--over); }
+  .cell.over .amt { color: var(--over); }
   .cell.blank { border-color: transparent; background: none; }
   .cell.clickable { cursor: pointer; }
   .cell.clickable:hover { border-color: var(--accent); }
@@ -224,13 +246,13 @@
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <header>
     <h1>💸 Spending Tracker</h1>
     <p>Log what you spend. See it by day, week, and month.</p>
   </header>
 
-  <div class="card">
+  <div class="card month-card">
     <div class="month-header">
       <button class="nav-btn" id="prevMonth" title="Previous month">‹</button>
       <div class="month-name" id="monthName">Month</div>
@@ -250,13 +272,14 @@
       <div class="budget-track"><div class="budget-fill" id="budgetFill"></div></div>
       <div class="budget-text" id="budgetText"></div>
     </div>
+    <div class="month-flag" id="monthFlag"></div>
   </div>
 
-  <div class="card">
+  <div class="card cal-card">
     <div class="card-title">📅 Month at a glance</div>
     <div class="cal-row" id="calHead"></div>
     <div id="calBody"></div>
-    <div class="cal-foot">Tap any day to add or edit its expenses.</div>
+    <div class="cal-foot" id="calFoot"></div>
   </div>
 
   <div class="card">
@@ -280,8 +303,12 @@
       <input type="text" id="currencyInput" maxlength="3">
     </div>
     <div class="setting-row">
-      <label for="budgetInput">Monthly budget (blank = none)</label>
-      <input type="text" id="budgetInput" inputmode="decimal" placeholder="none">
+      <label for="dayLimitInput">Day limit — days above turn red</label>
+      <input type="text" id="dayLimitInput" inputmode="decimal" placeholder="off">
+    </div>
+    <div class="setting-row">
+      <label for="budgetInput">Monthly limit — month turns red above</label>
+      <input type="text" id="budgetInput" inputmode="decimal" placeholder="off">
     </div>
     <div class="divider"></div>
     <div class="card-title">☁️ Cloud sync</div>
@@ -301,10 +328,20 @@
                      "July", "August", "September", "October", "November", "December"];
 
   // ---- Storage ----
-  // currency is null until the user picks one, so a synced choice can win
-  // over another device's untouched default.
-  function blank() { return { version: 1, currency: null, budget: null, entries: {}, deletedIds: [] }; }
-  function currency() { return data.currency || "$"; }
+  var DEFAULT_CURRENCY = "€";
+  var DEFAULT_BUDGET = 60000;    // €600 per month
+  var DEFAULT_DAY_LIMIT = 2000;  // €20 per day
+
+  // Settings stay null until the user picks a value, so a synced choice can
+  // win over another device's untouched default. An explicit 0 means "off".
+  function blank() {
+    return { version: 1, currency: null, budget: null, dayLimit: null, entries: {}, deletedIds: [] };
+  }
+  function currency() { return data.currency || DEFAULT_CURRENCY; }
+  function budgetLimit() { return data.budget == null ? DEFAULT_BUDGET : data.budget; }
+  function dayLimit() { return data.dayLimit == null ? DEFAULT_DAY_LIMIT : data.dayLimit; }
+  function isDayOver(cents) { return dayLimit() > 0 && cents > dayLimit(); }
+  function isMonthOver(cents) { return budgetLimit() > 0 && cents > budgetLimit(); }
 
   function load() {
     try {
@@ -315,6 +352,7 @@
       if (!Array.isArray(d.deletedIds)) d.deletedIds = [];
       if (typeof d.currency !== "string" || !d.currency) d.currency = null;
       if (typeof d.budget !== "number") d.budget = null;
+      if (typeof d.dayLimit !== "number") d.dayLimit = null;
       return d;
     } catch (e) { return blank(); }
   }
@@ -403,22 +441,27 @@
     document.getElementById("statAvg").textContent = money(elapsed ? Math.round(total / elapsed) : 0);
     document.getElementById("statMax").textContent = money(biggest);
 
+    var limit = budgetLimit();
+    var over = isMonthOver(total);
     var wrap = document.getElementById("budgetWrap");
-    if (data.budget == null) {
+    if (limit <= 0) {
       wrap.style.display = "none";
     } else {
       wrap.style.display = "";
-      var pct = data.budget > 0 ? (total / data.budget) * 100 : 100;
+      var pct = (total / limit) * 100;
       var fill = document.getElementById("budgetFill");
       fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
-      fill.classList.toggle("over", total > data.budget);
+      fill.classList.toggle("over", over);
       document.getElementById("budgetFrom").textContent = money(0);
-      document.getElementById("budgetTo").textContent = money(data.budget);
-      var left = data.budget - total;
+      document.getElementById("budgetTo").textContent = money(limit);
+      var left = limit - total;
       document.getElementById("budgetText").textContent = left >= 0
-        ? money(left) + " left · " + Math.round(pct) + "% of budget used"
-        : money(-left) + " over budget";
+        ? money(left) + " left · " + Math.round(pct) + "% of the monthly limit"
+        : money(-left) + " over the monthly limit";
     }
+    document.getElementById("app").classList.toggle("month-over", over);
+    document.getElementById("monthFlag").textContent =
+      "⚠️ Over the " + money(limit) + " monthly limit";
   }
 
   function renderCalendar() {
@@ -454,7 +497,7 @@
           if (firstIn === null) firstIn = d.getDate();
           lastIn = d.getDate();
           cell.className = "cell clickable" +
-            (t !== 0 ? " spent" : "") +
+            (isDayOver(t) ? " over" : t !== 0 ? " spent" : "") +
             (key === todayKey ? " today" : "") +
             (key === selectedKey ? " selected" : "");
           cell.innerHTML =
@@ -479,6 +522,10 @@
 
       cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7);
     }
+
+    document.getElementById("calFoot").textContent =
+      "Tap any day to add or edit its expenses." +
+      (dayLimit() > 0 ? " Days above " + money(dayLimit()) + " turn red." : "");
   }
 
   function renderDay() {
@@ -487,7 +534,10 @@
     var label = d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
     if (selectedKey === dateKey(today)) label = "Today · " + label;
     document.getElementById("dayDate").textContent = label;
-    document.getElementById("dayTotal").textContent = money(dayTotal(selectedKey));
+    var dTotal = dayTotal(selectedKey);
+    var totalEl = document.getElementById("dayTotal");
+    totalEl.textContent = money(dTotal);
+    totalEl.style.color = isDayOver(dTotal) ? "var(--over)" : "";
 
     var area = document.getElementById("entriesArea");
     var list = entriesFor(selectedKey);
@@ -525,7 +575,13 @@
     var cur = document.getElementById("currencyInput");
     if (document.activeElement !== cur) cur.value = currency();
     var bud = document.getElementById("budgetInput");
-    if (document.activeElement !== bud) bud.value = data.budget == null ? "" : (data.budget / 100).toFixed(2);
+    if (document.activeElement !== bud) {
+      bud.value = budgetLimit() > 0 ? (budgetLimit() / 100).toFixed(2) : "";
+    }
+    var dl = document.getElementById("dayLimitInput");
+    if (document.activeElement !== dl) {
+      dl.value = dayLimit() > 0 ? (dayLimit() / 100).toFixed(2) : "";
+    }
   }
 
   // ---- Actions ----
@@ -591,15 +647,22 @@
     data.currency = this.value.trim() || null;
     save(data);
     scheduleSync();
-    renderSummary();
-    renderDay();
+    render();
   });
   document.getElementById("budgetInput").addEventListener("input", function () {
     var v = this.value.trim();
-    data.budget = v === "" ? null : parseAmount(v);
+    data.budget = v === "" ? 0 : (parseAmount(v) || 0);
     save(data);
     scheduleSync();
     renderSummary();
+  });
+  document.getElementById("dayLimitInput").addEventListener("input", function () {
+    var v = this.value.trim();
+    data.dayLimit = v === "" ? 0 : (parseAmount(v) || 0);
+    save(data);
+    scheduleSync();
+    renderCalendar();
+    renderDay();
   });
 
   document.getElementById("resetAll").addEventListener("click", function () {
@@ -661,6 +724,7 @@
     var out = blank();
     out.currency = local.currency || remote.currency || null;
     out.budget = local.budget != null ? local.budget : (typeof remote.budget === "number" ? remote.budget : null);
+    out.dayLimit = local.dayLimit != null ? local.dayLimit : (typeof remote.dayLimit === "number" ? remote.dayLimit : null);
 
     var tomb = {};
     (remote.deletedIds || []).concat(local.deletedIds || []).forEach(function (id) { tomb[id] = 1; });
