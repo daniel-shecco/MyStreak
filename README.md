@@ -84,7 +84,21 @@ deleted.
 `index.html` holds the whole app — inline CSS and JavaScript, no build step.
 Open it directly in a browser to test locally.
 
-The icon lives in `favicon.svg`, where the euro sign is drawn as geometry
-rather than text so it never depends on an installed font. `favicon-32.png`
-and `favicon-180.png` (the iOS home-screen icon) are rasters of that same
-file; regenerate them from the SVG if you change it.
+`icon.svg` is the master artwork — a bundle of banknotes with coins — and
+every raster is generated from it:
+
+| File | Used for |
+| --- | --- |
+| `icon.svg` | browser tab, and any size not covered below |
+| `favicon-32.png` | tabs in browsers without SVG icon support |
+| `apple-touch-icon.png` | iOS home-screen shortcut (full-bleed; iOS rounds it) |
+| `icon-192.png`, `icon-512.png` | Android / desktop install icons |
+| `icon-maskable-512.png` | Android adaptive icons (art inset to the safe zone so circle masks don't clip it) |
+
+`manifest.webmanifest` names the shortcut ("Spending") and makes it open
+standalone, without browser chrome.
+
+## Adding it to your home screen
+
+- **iOS/Safari**: Share → *Add to Home Screen*.
+- **Android/Chrome**: menu → *Install app* or *Add to Home screen*.
