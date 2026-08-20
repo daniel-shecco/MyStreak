@@ -35,6 +35,8 @@
     --over: #dc2626;
     --over-soft: #fee2e2;
     --over-tint: #fdf3f3;
+    --good: #15803d;
+    --good-soft: #dcfce7;
     --accent: #f59e0b;
     --accent-soft: #fef3c7;
     --on-accent: #ffffff;
@@ -55,6 +57,8 @@
       --over: #f87171;
       --over-soft: #3d1a1d;
       --over-tint: #221419;
+      --good: #4ade80;
+      --good-soft: #123324;
       --accent: #fbbf24;
       --accent-soft: #3a2c0c;
       --on-accent: #14161f;
@@ -73,6 +77,8 @@
     --over: #f87171;
     --over-soft: #3d1a1d;
     --over-tint: #221419;
+    --good: #4ade80;
+    --good-soft: #123324;
     --accent: #fbbf24;
     --accent-soft: #3a2c0c;
     --on-accent: #14161f;
@@ -111,6 +117,31 @@
     box-shadow: var(--shadow);
   }
   .theme-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+  .tabs {
+    display: flex;
+    gap: .35rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .3rem;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1;
+    padding: .55rem .4rem;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: .85rem;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--spend); color: #fff; }
+  .view { display: flex; flex-direction: column; gap: 1.25rem; }
+  .view[hidden] { display: none; }
 
   .card {
     background: var(--card);
@@ -229,6 +260,41 @@
   .week-strip.empty .w-amt { font-weight: 400; color: var(--muted); }
   .cal-foot { font-size: .72rem; color: var(--muted); text-align: center; margin-top: .5rem; }
 
+  /* ---- History table ---- */
+  .hist-scroll { overflow-x: auto; }
+  table.hist { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .hist th {
+    font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); padding: .35rem .45rem .5rem; text-align: right;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .hist td {
+    padding: .6rem .45rem; text-align: right; white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .hist th:first-child, .hist td:first-child { text-align: left; }
+  .hist .m-name { font-weight: 700; }
+  .hist .m-name small { display: block; font-weight: 400; color: var(--muted); font-size: .7rem; }
+  .hist tbody tr { cursor: pointer; }
+  .hist tbody tr:hover td { background: var(--bg); }
+  .hist tbody tr.current td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .hist .val { font-weight: 700; }
+  .hist .good { color: var(--good); }
+  .hist .bad { color: var(--over); }
+  .hist .muted { color: var(--muted); font-weight: 400; }
+  .pill {
+    display: inline-block; padding: .12rem .5rem; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.bad { background: var(--over-soft); color: var(--over); }
+  .hist tfoot td {
+    border-bottom: none; border-top: 2px solid var(--border);
+    font-weight: 800; padding-top: .7rem;
+  }
+  .hist-empty { color: var(--muted); font-size: .9rem; }
+  .hist-note { font-size: .72rem; color: var(--muted); margin-top: .8rem; text-align: center; }
+
   @media (max-width: 460px) {
     body { padding: 1.25rem .6rem; }
     .card { padding: 1.1rem .9rem; }
@@ -315,6 +381,12 @@
     <p>Log what you spend. See it by day, week, and month.</p>
   </header>
 
+  <div class="tabs">
+    <button class="tab active" id="tabTracker">📅 This month</button>
+    <button class="tab" id="tabHistory">📊 History</button>
+  </div>
+
+  <div class="view" id="trackerView">
   <div class="card month-card">
     <div class="month-header">
       <button class="nav-btn" id="prevMonth" title="Previous month">‹</button>
@@ -357,6 +429,14 @@
       <button type="submit" class="btn">Add</button>
     </form>
     <div class="form-error" id="formError"></div>
+  </div>
+  </div><!-- /trackerView -->
+
+  <div class="view" id="historyView" hidden>
+    <div class="card">
+      <div class="card-title">📊 Monthly history</div>
+      <div id="historyBody"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -483,6 +563,7 @@
     renderSummary();
     renderCalendar();
     renderDay();
+    renderHistory();
     renderSettings();
   }
 
@@ -634,6 +715,102 @@
     area.appendChild(wrap);
   }
 
+  // Every month from the first logged expense through the current month
+  // (extended if anything is logged in the future), newest first.
+  function historyMonths() {
+    var keys = Object.keys(data.entries).filter(function (k) { return entriesFor(k).length; }).sort();
+    var now = new Date();
+    var startY = now.getFullYear(), startM = now.getMonth();
+    var endY = startY, endM = startM;
+    if (keys.length) {
+      var f = keys[0].split("-"), l = keys[keys.length - 1].split("-");
+      var fy = +f[0], fm = +f[1] - 1, ly = +l[0], lm = +l[1] - 1;
+      if (fy * 12 + fm < startY * 12 + startM) { startY = fy; startM = fm; }
+      if (ly * 12 + lm > endY * 12 + endM) { endY = ly; endM = lm; }
+    }
+    var out = [], y = startY, m = startM;
+    while (y * 12 + m <= endY * 12 + endM) {
+      out.push([y, m]);
+      if (++m > 11) { m = 0; y++; }
+    }
+    return out.reverse();
+  }
+
+  function renderHistory() {
+    var el = document.getElementById("historyBody");
+    var months = historyMonths();
+    var limit = budgetLimit();
+    var hasData = Object.keys(data.entries).some(function (k) { return entriesFor(k).length; });
+
+    if (!hasData) {
+      el.innerHTML = '<div class="hist-empty">Nothing logged yet — add an expense and your months will show up here.</div>';
+      return;
+    }
+
+    var now = new Date();
+    var curKey = now.getFullYear() * 12 + now.getMonth();
+    var rows = "", totalSpent = 0, totalBudget = 0;
+
+    months.forEach(function (ym) {
+      var y = ym[0], m = ym[1];
+      var spent = monthTotal(y, m);
+      var isCurrent = y * 12 + m === curKey;
+      totalSpent += spent;
+      if (limit > 0) totalBudget += limit;
+
+      var cells;
+      if (limit > 0) {
+        var over = spent > limit;
+        var diff = Math.abs(limit - spent);
+        cells =
+          '<td class="val muted">' + money(limit) + "</td>" +
+          '<td class="val ' + (over ? "bad" : "good") + '">' + money(spent) + "</td>" +
+          '<td><span class="pill ' + (over ? "bad" : "good") + '">' +
+            (over ? "+" + money(diff) + " over" : money(diff) + " left") + "</span></td>";
+      } else {
+        cells =
+          '<td class="val muted">—</td>' +
+          '<td class="val">' + money(spent) + "</td>" +
+          '<td class="muted">no limit set</td>';
+      }
+
+      rows += '<tr class="' + (isCurrent ? "current" : "") + '" data-y="' + y + '" data-m="' + m + '">' +
+        '<td class="m-name">' + MONTH_NAMES[m].slice(0, 3) + " " + y +
+          (isCurrent ? "<small>this month</small>" : "") + "</td>" + cells + "</tr>";
+    });
+
+    var footer = limit > 0
+      ? '<td class="muted">' + money(totalBudget) + "</td>" +
+        '<td class="' + (totalSpent > totalBudget ? "bad" : "good") + '">' + money(totalSpent) + "</td><td></td>"
+      : "<td></td><td>" + money(totalSpent) + "</td><td></td>";
+
+    el.innerHTML =
+      '<div class="hist-scroll"><table class="hist">' +
+      "<thead><tr><th>Month</th><th>Budget</th><th>Spent</th><th>Result</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+      '<tfoot><tr><td>' + months.length + " month" + (months.length === 1 ? "" : "s") + "</td>" + footer + "</tr></tfoot>" +
+      "</table></div>" +
+      '<div class="hist-note">Tap a month to open it. Budget is your current monthly limit, so changing it re-scores every month.</div>';
+
+    Array.prototype.forEach.call(el.querySelectorAll("tbody tr"), function (tr) {
+      tr.addEventListener("click", function () {
+        viewYear = +tr.getAttribute("data-y");
+        viewMonth = +tr.getAttribute("data-m");
+        showTab("tracker");
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  }
+
+  function showTab(tab) {
+    var isHistory = tab === "history";
+    document.getElementById("trackerView").hidden = isHistory;
+    document.getElementById("historyView").hidden = !isHistory;
+    document.getElementById("tabTracker").classList.toggle("active", !isHistory);
+    document.getElementById("tabHistory").classList.toggle("active", isHistory);
+  }
+
   function renderSettings() {
     var cur = document.getElementById("currencyInput");
     if (document.activeElement !== cur) cur.value = currency();
@@ -695,6 +872,12 @@
     input.focus();
   });
 
+  document.getElementById("tabTracker").addEventListener("click", function () { showTab("tracker"); });
+  document.getElementById("tabHistory").addEventListener("click", function () {
+    renderHistory();
+    showTab("history");
+  });
+
   document.getElementById("prevMonth").addEventListener("click", function () {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
@@ -718,6 +901,7 @@
     save(data);
     scheduleSync();
     renderSummary();
+    renderHistory();
   });
   document.getElementById("dayLimitInput").addEventListener("input", function () {
     var v = this.value.trim();

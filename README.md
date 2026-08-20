@@ -14,6 +14,17 @@ backend, no account, no build step.
   days with spending, the average per day, and your biggest day.
 - Use the ‹ › arrows to move between months.
 
+## Monthly history
+
+The **History** tab lists every month from your first logged expense to the
+current one, with its budget, what you actually spent, and the difference.
+Months within budget are **green**, months that went over are **red**, and a
+totals row sums the whole period. Tap any row to jump to that month in the
+calendar.
+
+Rows are scored against your *current* monthly limit, so changing the limit
+in Settings re-scores the whole table.
+
 ## Red flags
 
 Amounts are in **euros (€)** by default.
