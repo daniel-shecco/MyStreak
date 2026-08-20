@@ -81,5 +81,10 @@ deleted.
 
 ## Development
 
-It's a single `index.html` file with inline CSS and JavaScript. Open it
-directly in a browser to test locally.
+`index.html` holds the whole app — inline CSS and JavaScript, no build step.
+Open it directly in a browser to test locally.
+
+The icon lives in `favicon.svg`, where the euro sign is drawn as geometry
+rather than text so it never depends on an installed font. `favicon-32.png`
+and `favicon-180.png` (the iOS home-screen icon) are rasters of that same
+file; regenerate them from the SVG if you change it.
