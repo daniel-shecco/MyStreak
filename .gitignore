@@ -1,0 +1,21 @@
+node_modules/
+.DS_Store
+*.log
+
+# Native build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
+ios/App/Pods/
+ios/App/build/
+ios/App/Podfile.lock
+DerivedData/
+
+# Signing material — never commit these
+*.keystore
+*.jks
+keystore.properties
+*.p12
+*.mobileprovision

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Budget Spending Streak</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script>
+  // Apply the saved theme before first paint to avoid a flash of the wrong one.
+  (function () {
+    try {
+      var t = localStorage.getItem("mbss-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <button class="theme-toggle" id="themeToggle" title="Switch theme">🖥️ Auto</button>
+    <h1>💸 Budget Spending Streak</h1>
+    <p>Stay under your daily budget. Keep the streak alive.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tabTracker">📅 Month</button>
+    <button class="tab" id="tabHistory">📊 History</button>
+    <button class="tab" id="tabSettings">⚙️ Settings</button>
+  </div>
+
+  <div class="view" id="trackerView">
+    <div class="card streak-card" id="streakCard">
+      <div class="streak-flame" id="streakFlame">🔥</div>
+      <div class="streak-count" id="streakCount">0</div>
+      <div class="streak-label" id="streakLabel">day streak under budget</div>
+      <div class="streak-sub">
+        <div><b id="streakBest">0</b><span>best streak</span></div>
+        <div><b id="streakToday">—</b><span>today so far</span></div>
+      </div>
+      <div class="streak-note" id="streakNote"></div>
+    </div>
+
+    <div class="card month-card">
+      <div class="month-header">
+        <button class="nav-btn" id="prevMonth" title="Previous month">‹</button>
+        <div class="month-name" id="monthName">Month</div>
+        <button class="nav-btn" id="nextMonth" title="Next month">›</button>
+      </div>
+      <div class="total">
+        <div class="total-amount" id="monthTotal">0</div>
+        <div class="total-label">spent this month</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="statDays">0</b><span>days with spend</span></div>
+        <div class="stat"><b id="statAvg">0</b><span>avg / day</span></div>
+        <div class="stat"><b id="statMax">0</b><span>biggest day</span></div>
+      </div>
+      <div class="budget-wrap" id="budgetWrap">
+        <div class="budget-ends"><span id="budgetFrom">0</span><span id="budgetTo"></span></div>
+        <div class="budget-track"><div class="budget-fill" id="budgetFill"></div></div>
+        <div class="budget-text" id="budgetText"></div>
+      </div>
+      <div class="month-flag" id="monthFlag"></div>
+    </div>
+
+    <div class="card cal-card">
+      <div class="card-title">📅 Month at a glance</div>
+      <div class="cal-row" id="calHead"></div>
+      <div id="calBody"></div>
+      <div class="cal-foot" id="calFoot"></div>
+    </div>
+
+    <div class="card">
+      <div class="day-head">
+        <div class="day-date" id="dayDate">Today</div>
+        <div class="day-total" id="dayTotal">0</div>
+      </div>
+      <div id="entriesArea"></div>
+      <form class="add-form" id="addForm">
+        <input type="text" id="amountInput" inputmode="decimal" placeholder="0.00" autocomplete="off">
+        <input type="text" id="noteInput" placeholder="What for? (optional)" autocomplete="off">
+        <button type="submit" class="btn">Add</button>
+      </form>
+      <div class="form-error" id="formError"></div>
+    </div>
+  </div>
+
+  <div class="view" id="historyView" hidden>
+    <div class="card">
+      <div class="card-title">📊 Monthly history</div>
+      <div id="historyBody"></div>
+    </div>
+  </div>
+
+  <div class="view" id="settingsView" hidden>
+    <div class="card">
+      <div class="card-title">⚙️ Budget</div>
+      <div class="setting-row">
+        <label for="currencyInput">Currency symbol</label>
+        <input type="text" id="currencyInput" maxlength="3">
+      </div>
+      <div class="setting-row">
+        <label for="dayLimitInput">Daily budget — days above turn red</label>
+        <input type="text" id="dayLimitInput" inputmode="decimal" placeholder="off">
+      </div>
+      <div class="setting-row">
+        <label for="budgetInput">Monthly budget — month turns red above</label>
+        <input type="text" id="budgetInput" inputmode="decimal" placeholder="off">
+      </div>
+      <div class="divider"></div>
+      <div class="card-title">🔐 Your data</div>
+      <p class="about">
+        Everything you log stays on this device. The app has no account, no server,
+        and never uploads your spending anywhere.
+      </p>
+      <div style="margin-top:.7rem">
+        <button class="link-btn" id="exportBtn">Export my data</button>
+      </div>
+      <div>
+        <button class="link-btn danger" id="resetAll">Delete all data</button>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title">ℹ️ About</div>
+      <p class="about">
+        My Budget Spending Streak · <span id="appVersion">0.1.0</span><br>
+        <button class="link-btn" id="privacyBtn">Privacy policy</button><br>
+        <button class="link-btn" id="adPrefsBtn">Ad privacy settings</button>
+      </p>
+    </div>
+  </div>
+
+  <footer><span id="footNote"></span></footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
